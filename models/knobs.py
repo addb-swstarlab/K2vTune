@@ -18,6 +18,7 @@ class Knob:
         self.index_value = self.get_index_value()
         self.KNOBSONEHOT_PATH = 'data/knobsOneHot.npy'
         self.knobs_one_hot = self.load_knobsOneHot()
+        self.TABLE_PATH = 'data/lookuptable'
 
     def split_data(self, s_wk): # s_wk is similar workload with target workload
         self.s_wk = s_wk
@@ -30,12 +31,12 @@ class Knob:
 
     def scale_data(self):
         self.scaler_im = MinMaxScaler().fit(self.im_tr)
-        self.scaler_em = MinMaxScaler().fit(self.em_tr)
+        self.scaler_em = StandardScaler().fit(self.em_tr)
 
-        self.norm_im_tr = torch.Tensor(self.sclaer_im.transform(self.im_tr)).cuda()
-        self.norm_im_te = torch.Tensor(self.sclaer_im.transform(self.im_te)).cuda()
-        self.norm_em_tr = torch.Tensor(self.sclaer_em.transform(self.em_tr)).cuda()
-        self.norm_em_te = torch.Tensor(self.sclaer_em.transform(self.em_te)).cuda()
+        self.norm_im_tr = torch.Tensor(self.scaler_im.transform(self.im_tr)).cuda()
+        self.norm_im_te = torch.Tensor(self.scaler_im.transform(self.im_te)).cuda()
+        self.norm_em_tr = torch.Tensor(self.scaler_em.transform(self.em_tr)).cuda()
+        self.norm_em_te = torch.Tensor(self.scaler_em.transform(self.em_te)).cuda()
 
     def get_index_value(self):
         self.index_value = dict()
@@ -74,7 +75,7 @@ class Knob:
     def get_knob2vec(self, data, table):
         k2v = np.zeros((data.shape[0], 22, table.shape[1]))
         for i in range(data.shape[0]):
-            idx = (data[i]==1).nonzero().squeeze().cpu().detach().numpy()
+            idx = (data[i]==1).nonzero(as_tuple=False).squeeze().cpu().detach().numpy()
             k2v[i] = table[idx]
         return k2v
     
