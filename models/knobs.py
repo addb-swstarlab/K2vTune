@@ -46,23 +46,26 @@ class Knob:
             self.index_value[col] = pd.Series(data=range(len(iv)), index=iv.index)
         return self.index_value
     
-    def make_knobsOneHot(self):
+    def make_knobsOneHot(self, k):
         knobs_one_hot = torch.Tensor()
-        for i in range(len(self.knobs)):   
+        for i in range(len(k)):   
             sample = torch.Tensor()
             for col in self.columns:
                 knob_one_hot = torch.zeros(len(self.index_value[col]))
-                knob_one_hot[self.index_value[col][self.knobs[col][i]]] = 1
+                knob_one_hot[self.index_value[col][k[col][i]]] = 1
                 sample = torch.cat((sample, knob_one_hot))
             sample = sample.unsqueeze(0)
             knobs_one_hot = torch.cat((knobs_one_hot, sample))
-        np.save(self.KNOBSONEHOT_PATH, np.array(knobs_one_hot))
+        return np.array(knobs_one_hot)
+        
 
-    def load_knobsOneHot(self):
-        if os.path.exists(self.KNOBSONEHOT_PATH):
+    def load_knobsOneHot(self, k=None, save=True):
+        if os.path.exists(self.KNOBSONEHOT_PATH) and save:
             return np.load(self.KNOBSONEHOT_PATH)
+        elif not save: # for GA
+            return self.make_knobsOneHot(k)
         else:
-            self.make_knobsOneHot()
+            np.save(self.KNOBSONEHOT_PATH, self.make_knobsOneHot(self.knobs))
             return self.load_knobsOneHot()
 
     def set_lookuptable(self, table):
