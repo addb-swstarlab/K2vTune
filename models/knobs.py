@@ -78,7 +78,10 @@ class Knob:
     def get_knob2vec(self, data, table):
         k2v = np.zeros((data.shape[0], 22, table.shape[1]))
         for i in range(data.shape[0]):
-            idx = (data[i]==1).nonzero(as_tuple=False).squeeze().cpu().detach().numpy()
+            if torch.is_tensor(data):
+                idx = (data[i]==1).nonzero(as_tuple=False).squeeze().cpu().detach().numpy()
+            else:
+                idx = (data[i]==1).nonzero().squeeze().cpu().detach().numpy()
             k2v[i] = table[idx]
         return k2v
     

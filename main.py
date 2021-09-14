@@ -4,8 +4,10 @@ import pandas as pd
 import numpy as np
 from models.utils import get_logger, rocksdb_knobs_make_dict
 from models.knobs import Knob
-from models.steps import get_euclidean_distance, train_knob2vec, train_fitness
+from models.steps import get_euclidean_distance, train_knob2vec, train_fitness_function, GA_optimization
 from sklearn.metrics import r2_score
+
+os.system('clear')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--target', type=int, default=1, help='Choose target workload')
@@ -13,7 +15,15 @@ parser.add_argument('--target_size', type=int, default=10, help='Define target w
 parser.add_argument('--lr', type=int, default=0.001, help='Define learning rate')
 parser.add_argument('--epochs', type=int, default=30, help='Define train epochs')
 parser.add_argument('--hidden_size', type=int, default=64, help='Define model hidden size')
+parser.add_argument('--batch_size', type=int, default=32, help='Define model batch size')
 parser.add_argument('--mode', type=str, default='gru', help='choose which model be used on fitness function')
+parser.add_argument('--tf', action='store_true', help='Choose usage of teacher forcing. if trigger this, tf be true')
+parser.add_argument('--eval', action='store_true', help='if trigger, model goes eval mode')
+parser.add_argument('--train', action='store_true', help='if trigger, model goes triain mode')
+parser.add_argument('--model_path', type=str, help='Define which .pt will be loaded on model')
+parser.add_argument('--pool', type=int, default=128, help='Define the number of pool to GA algorithm')
+parser.add_argument('--generation', type=int, default=1000, help='Define the number of generation to GA algorithm')
+parser.add_argument('--GA_batch_size', type=int, default=8, help='Define GA batch size')
 
 opt = parser.parse_args()
 
@@ -73,19 +83,33 @@ def main():
         knobs.set_lookuptable(train_knob2vec(knobs=knobs, logger=logger, opt=opt))
     knobs.set_knob2vec()
     logger.info("## Train Knob2Vec for similar workload DONE##")
+  
+    if opt.train:
+        logger.info("## Train Fitness Function ##")
+        fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)
+
+        pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
+        true = knobs.em_te.to_numpy()
+
+        for i in range(10):
+            logger.info(f'predict rslt: {pred[i]}')
+            logger.info(f'ground truth: {true[i]}\n')
+        score = r2_score(true, pred, multioutput='raw_values')
+        ex_col = external_dict[0].columns
+        for i, c in enumerate(ex_col):
+            logger.info(f'{c:4}\t r2 score = {score[i]:.4f}')
+        logger.info(f'average r2 score = {np.average(score):.4f}')
+    elif opt.eval:
+        logger.info("## Load Trained Fitness Function ##")
+        fitness_function = train_fitness_function(knobs=knobs, logger=logger, opt=opt)
+    else:
+        logger.exception("Choose Model mode, '--train' or '--eval'")
+    
+    GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
 
 
-    logger.info("## Train Fitness Function ##")
-    fitness_function, outputs = train_fitness(knobs=knobs, logger=logger, opt=opt)
 
-    pred = knobs.scaler_em.inverse_transform(outputs)
-    true = knobs.em_te.to_numpy()
-
-    for i in range(10):
-        logger.info(f'predict rslt: {pred[i]}')
-        logger.info(f'ground truth: {true[i]}\n')
-
-    logger.info("## Train Fitness Function DONE ##")
+    logger.info("## Train/Load Fitness Function DONE ##")
     
     logger.info("## Configuration Recommendation DONE ##")
 
