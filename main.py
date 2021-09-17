@@ -54,10 +54,16 @@ def main():
     for wk in range(WK_NUM):
         im = pd.read_csv(os.path.join(INTERNAL_PATH, f'internal_results_{wk}.csv'), index_col=0)
         internal_dict[wk] = im[pruned_im.columns]
+    if opt.target > 15:
+        im = pd.read_csv(f'data/target_workload/{opt.target}/internal_results_11.csv', index_col=0)
+        internal_dict[wk+1] = im[pruned_im.columns]
 
     for wk in range(WK_NUM):
         ex = pd.read_csv(os.path.join(EXTERNAL_PATH, f'external_results_{wk}.csv'), index_col=0)
         external_dict[wk] = ex
+    if opt.target > 15:
+        ex = pd.read_csv(f'data/target_workload/{opt.target}/external_results_11.csv', index_col=0)
+        external_dict[wk+1] = ex
     logger.info('## get raw datas DONE ##')
 
 

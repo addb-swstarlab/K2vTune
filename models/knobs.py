@@ -19,24 +19,34 @@ class Knob:
         self.KNOBSONEHOT_PATH = 'data/knobsOneHot.npy'
         self.knobs_one_hot = self.load_knobsOneHot()
         self.TABLE_PATH = 'data/lookuptable'
+        self.DEFAULT_EM_PATH = 'data/external/default_external.csv'
+        self.default_trg_em = self.get_trg_default()
 
     def split_data(self, s_wk): # s_wk is similar workload with target workload
         self.s_wk = s_wk
         self.s_internal_metrics = self.internal_metrics[self.s_wk]
         self.s_external_metrics = self.external_metrics[self.s_wk]
-        self.X_tr, self.X_te, self.im_tr, self.im_te, self.em_tr, self.em_te = \
-            train_test_split(self.knobs_one_hot, self.s_internal_metrics, self.s_external_metrics, test_size=0.2, random_state=22)
+        self.X_tr, self.X_te, self.im_tr, self.im_te, self.em_tr, self.em_te, self.knob_tr, self.knob_te = \
+            train_test_split(self.knobs_one_hot, self.s_internal_metrics, self.s_external_metrics, self.knobs, test_size=0.2, random_state=22)
         self.X_tr = torch.Tensor(self.X_tr).cuda()
         self.X_te = torch.Tensor(self.X_te).cuda()
 
     def scale_data(self):
         self.scaler_im = MinMaxScaler().fit(self.im_tr)
         self.scaler_em = StandardScaler().fit(self.em_tr)
+        self.scaler_k = MinMaxScaler().fit(self.knob_tr)
 
         self.norm_im_tr = torch.Tensor(self.scaler_im.transform(self.im_tr)).cuda()
         self.norm_im_te = torch.Tensor(self.scaler_im.transform(self.im_te)).cuda()
         self.norm_em_tr = torch.Tensor(self.scaler_em.transform(self.em_tr)).cuda()
         self.norm_em_te = torch.Tensor(self.scaler_em.transform(self.em_te)).cuda()
+        self.norm_k_tr = torch.Tensor(self.scaler_k.transform(self.knob_tr)).cuda()
+        self.norm_k_te = torch.Tensor(self.scaler_k.transform(self.knob_te)).cuda()
+
+    def get_trg_default(self):
+        default_em = pd.read_csv(self.DEFAULT_EM_PATH,index_col=0)
+        default_em = default_em.to_numpy()
+        return default_em[self.target_wk] # [time, rate, waf, sa]
 
     def get_index_value(self):
         self.index_value = dict()
