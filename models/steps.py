@@ -111,13 +111,14 @@ def train_fitness_function(knobs, logger, opt):
         model = torch.load(os.path.join('model_save',opt.model_path))
         return model
 
-def score_function(df, pr):
+def score_function(df, pr, ex_w):
     score = 0
-    for i in range(len(df)):
-        if i == 1:
-            score += (pr[i] - df[i])/df[i]
-        else:
-            score += (df[i] - pr[i])/df[i]
+    score = ((df[0] - pr[0])/df[0]) * ex_w[0] + ((pr[1] - df[1])/df[1]) * ex_w[1] + ((df[2] - pr[2])/df[2]) * ex_w[2] + ((df[3] - pr[3])/df[3]) * ex_w[3]
+    # for i in range(len(df)):
+    #     if i == 1:
+    #         score += (pr[i] - df[i])/df[i]
+    #     else:
+    #         score += (df[i] - pr[i])/df[i]
     return round(score, 2)
 
 def set_fitness_function(solution, model, knobs, opt):
@@ -136,9 +137,9 @@ def set_fitness_function(solution, model, knobs, opt):
         for data, _ in loader_sol:
             if opt.mode == 'dnn':
                 data = torch.reshape(data, (data.shape[0], -1))
-            fitness_batch = model(data)
+            fitness_batch, _ = model(data)
             fitness_batch = knobs.scaler_em.inverse_transform(fitness_batch.cpu().numpy())
-            fitness_batch = [score_function(knobs.default_trg_em, _) for _ in fitness_batch]
+            fitness_batch = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness_batch]
             # TODO:
             #   make score function to compare fitness values with just one scalar. Current is 4 of list
             #   compare with default external metrics on data/external/default_external.csv

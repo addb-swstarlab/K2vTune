@@ -12,7 +12,7 @@ os.system('clear')
 parser = argparse.ArgumentParser()
 parser.add_argument('--target', type=int, default=1, help='Choose target workload')
 parser.add_argument('--target_size', type=int, default=10, help='Define target workload size')
-parser.add_argument('--lr', type=int, default=0.001, help='Define learning rate')
+parser.add_argument('--lr', type=float, default=0.001, help='Define learning rate')
 parser.add_argument('--epochs', type=int, default=30, help='Define train epochs')
 parser.add_argument('--hidden_size', type=int, default=64, help='Define model hidden size')
 parser.add_argument('--batch_size', type=int, default=32, help='Define model batch size')
@@ -24,6 +24,7 @@ parser.add_argument('--model_path', type=str, help='Define which .pt will be loa
 parser.add_argument('--pool', type=int, default=128, help='Define the number of pool to GA algorithm')
 parser.add_argument('--generation', type=int, default=1000, help='Define the number of generation to GA algorithm')
 parser.add_argument('--GA_batch_size', type=int, default=8, help='Define GA batch size')
+parser.add_argument('--ex_weight', type=float, action='append', help='Define external metrics weight to calculate score')
 
 opt = parser.parse_args()
 
