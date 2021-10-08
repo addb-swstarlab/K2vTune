@@ -33,7 +33,7 @@ class Knob:
 
     def scale_data(self):
         self.scaler_im = MinMaxScaler().fit(self.im_tr)
-        self.scaler_em = StandardScaler().fit(self.em_tr)
+        self.scaler_em = MinMaxScaler().fit(self.em_tr)
         self.scaler_k = MinMaxScaler().fit(self.knob_tr)
 
         self.norm_im_tr = torch.Tensor(self.scaler_im.transform(self.im_tr)).cuda()
@@ -42,6 +42,8 @@ class Knob:
         self.norm_em_te = torch.Tensor(self.scaler_em.transform(self.em_te)).cuda()
         self.norm_k_tr = torch.Tensor(self.scaler_k.transform(self.knob_tr)).cuda()
         self.norm_k_te = torch.Tensor(self.scaler_k.transform(self.knob_te)).cuda()
+
+        self.default_trg_em = self.scaler_em.transform([self.default_trg_em])[0]
 
     def get_trg_default(self):
         default_em = pd.read_csv(self.DEFAULT_EM_PATH,index_col=0)
