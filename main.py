@@ -6,8 +6,11 @@ from models.utils import get_logger, rocksdb_knobs_make_dict
 from models.knobs import Knob
 from models.steps import get_euclidean_distance, train_knob2vec, train_fitness_function, GA_optimization
 from sklearn.metrics import r2_score
+from scipy.stats import pearsonr
+from lifelines.utils import concordance_index
 
 os.system('clear')
+# os.system('rm logs/20210928/log-20210928-53.log')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--target', type=int, default=1, help='Choose target workload')
@@ -17,14 +20,16 @@ parser.add_argument('--epochs', type=int, default=30, help='Define train epochs'
 parser.add_argument('--hidden_size', type=int, default=64, help='Define model hidden size')
 parser.add_argument('--batch_size', type=int, default=32, help='Define model batch size')
 parser.add_argument('--mode', type=str, default='gru', help='choose which model be used on fitness function')
+parser.add_argument('--attn_mode', type=str, choices=['dot', 'general', 'concat', 'bahdanau'], default='dot', help='choose which attention be used')
 parser.add_argument('--tf', action='store_true', help='Choose usage of teacher forcing. if trigger this, tf be true')
 parser.add_argument('--eval', action='store_true', help='if trigger, model goes eval mode')
 parser.add_argument('--train', action='store_true', help='if trigger, model goes triain mode')
 parser.add_argument('--model_path', type=str, help='Define which .pt will be loaded on model')
 parser.add_argument('--pool', type=int, default=128, help='Define the number of pool to GA algorithm')
 parser.add_argument('--generation', type=int, default=1000, help='Define the number of generation to GA algorithm')
-parser.add_argument('--GA_batch_size', type=int, default=8, help='Define GA batch size')
+parser.add_argument('--GA_batch_size', type=int, default=32, help='Define GA batch size')
 parser.add_argument('--ex_weight', type=float, action='append', help='Define external metrics weight to calculate score')
+parser.add_argument('--save', action='store_true', help='Choose save the score on csv file or just show')
 
 opt = parser.parse_args()
 
@@ -95,30 +100,62 @@ def main():
         logger.info("## Train Fitness Function ##")
         fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)
 
-        pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
+        # pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
+        pred = np.round(knobs.scaler_em.inverse_transform(outputs), 2)
         true = knobs.em_te.to_numpy()
 
         for i in range(10):
             logger.info(f'predict rslt: {pred[i]}')
             logger.info(f'ground truth: {true[i]}\n')
-        score = r2_score(true, pred, multioutput='raw_values')
-        ex_col = external_dict[0].columns
-        for i, c in enumerate(ex_col):
-            logger.info(f'{c:4}\t r2 score = {score[i]:.4f}')
-        logger.info(f'average r2 score = {np.average(score):.4f}')
+
+        r2_res = r2_score(true, pred, multioutput='raw_values')
+        logger.info(f'average r2 score = {np.average(r2_res):.4f}')
+        pcc_res = 0
+        ci_res = 0
+        for idx in range(len(true)):
+            res, _ = pearsonr(true[idx], pred[idx])
+            pcc_res += res
+            res = concordance_index(true[idx], pred[idx])
+            ci_res += res
+        logger.info(f'average pcc score = {pcc_res/len(true):.4f}')
+        logger.info(f'average ci score = {ci_res/len(true):.4f}')
+        
     elif opt.eval:
         logger.info("## Load Trained Fitness Function ##")
-        fitness_function = train_fitness_function(knobs=knobs, logger=logger, opt=opt)
+        fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)
+        pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
+        true = knobs.em_te.to_numpy()
+
+        r2_res = r2_score(true, pred, multioutput='raw_values')
+        logger.info(f'average r2 score = {np.average(r2_res):.4f}')
+        pcc_res = 0
+        ci_res = 0
+        for idx in range(len(true)):
+            res, _ = pearsonr(true[idx], pred[idx])
+            pcc_res += res
+            res = concordance_index(true[idx], pred[idx])
+            ci_res += res
+        logger.info(f'average pcc score = {pcc_res/len(true):.4f}')
+        logger.info(f'average ci score = {ci_res/len(true):.4f}')
+        # ex_col = external_dict[0].columns
+        # for i, c in enumerate(ex_col):
+        #     logger.info(f'{c:4}\t r2 score = {r2_res[i]:.4f}')
+        assert False
     else:
         logger.exception("Choose Model mode, '--train' or '--eval'")
     
-    GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
-
-
+    recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
 
     logger.info("## Train/Load Fitness Function DONE ##")
     
     logger.info("## Configuration Recommendation DONE ##")
+
+    os.system(f'sshpass -p 1423 ssh jieun@165.132.106.45 "{recommend_command}"')
+    if opt.save:
+        os.system(f'sshpass -p 1423 ssh jieun@165.132.106.45 "sh parse.sh"')
+    else:
+        os.system(f'sshpass -p 1423 ssh jieun@165.132.106.45 "python3 show_ex.py"')
+
 
 if __name__ == '__main__':
     try:
