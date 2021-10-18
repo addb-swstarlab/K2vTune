@@ -26,4 +26,4 @@ python main.py --target {target number} --tf --eval --model_path {model_path} \
 ```
 
 ## Updated History
-* (211018) update data/README.md to explain data samples
+* (211018) update data/README.md to explain data samples and README.md how to train the model
