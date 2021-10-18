@@ -4,10 +4,12 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import torch
 from torch.utils.data import DataLoader
-from models.network import RocksDBDataset, SingleNet, GRUNet, EncoderRNN, DecoderRNN, AttnDecoderRNN
+from models.network import RocksDBDataset, SingleNet, GRUNet, EncoderRNN, DecoderRNN, AttnDecoderRNN, Attention
 from models.train import train, valid
 from models.utils import get_filename
 import models.rocksdb_option as option
+from scipy.stats import gmean
+from sklearn.ensemble import RandomForestRegressor
 
 def euclidean_distance(a, b):
     res = a - b
@@ -62,10 +64,15 @@ def train_knob2vec(knobs, logger, opt):
     return table
 
 def train_fitness_function(knobs, logger, opt):
+    if opt.mode == 'RF':
+        rf = RandomForestRegressor(max_depth=2, random_state=0)
+        rf.fit(knobs.norm_k_tr.cpu().detach().numpy(), knobs.norm_em_tr.cpu().detach().numpy())
+        return rf, rf.predict(knobs.norm_k_te.cpu().detach().numpy())
+
     if opt.mode == 'dnn':
         Dataset_K2vec_tr = RocksDBDataset(torch.reshape(knobs.knob2vec_tr, (knobs.knob2vec_tr.shape[0], -1)), knobs.norm_em_tr)
         Dataset_K2vec_te = RocksDBDataset(torch.reshape(knobs.knob2vec_te, (knobs.knob2vec_te.shape[0], -1)), knobs.norm_em_te)
-    elif opt.mode == 'raw':
+    elif opt.mode == 'raw' or opt.mode == 'RF':
         Dataset_K2vec_tr = RocksDBDataset(knobs.norm_k_tr, knobs.norm_em_tr)
         Dataset_K2vec_te = RocksDBDataset(knobs.norm_k_te, knobs.norm_em_te)
     else:
@@ -82,8 +89,9 @@ def train_fitness_function(knobs, logger, opt):
         decoder = DecoderRNN(input_dim=1, hidden_dim=opt.hidden_size, output_dim=1)
         model = GRUNet(encoder=encoder, decoder=decoder, tf=opt.tf, batch_size=opt.batch_size).cuda()
     elif opt.mode == 'attngru':
+        attn = Attention(batch_size=opt.batch_size, hidden_size=opt.hidden_size, method=opt.attn_mode, mlp=False)
         encoder = EncoderRNN(input_dim=knobs.knob2vec_tr.shape[-1], hidden_dim=opt.hidden_size)
-        decoder = AttnDecoderRNN(input_dim=1, hidden_dim=opt.hidden_size, output_dim=1)
+        decoder = AttnDecoderRNN(input_dim=1, hidden_dim=opt.hidden_size, output_dim=1, attn=attn)
         model = GRUNet(encoder=encoder, decoder=decoder, tf=opt.tf, batch_size=opt.batch_size).cuda()
     elif opt.mode == 'raw':
         model = SingleNet(input_dim=knobs.norm_k_tr.shape[1], hidden_dim=16, output_dim=knobs.norm_em_tr.shape[-1]).cuda()
@@ -100,30 +108,41 @@ def train_fitness_function(knobs, logger, opt):
         
             logger.info(f"[{epoch:02d}/{opt.epochs}] loss_tr: {loss_tr:.8f}\tloss_te:{loss_te:.8f}")
 
-            if best_loss > loss_te:
+            if best_loss > loss_te and epoch>15:
                 best_loss = loss_te
-                torch.save(model, os.path.join('model_save', name))
+                best_model = model
+                torch.save(best_model, os.path.join('model_save', name))
         logger.info(f"loss is {best_loss:.4f}, save model to {os.path.join('model_save', name)}")
+        
 
-        return model, outputs
+        return best_model, outputs
     elif opt.eval:
         logger.info(f"[Eval MODE] Trained Model Loading with path: {opt.model_path}")
         model = torch.load(os.path.join('model_save',opt.model_path))
-        return model
+        _, outputs = valid(model, loader_K2vec_te)
+        return model, outputs
 
 def score_function(df, pr, ex_w):
-    score = 0
-    score = ((df[0] - pr[0])/df[0]) * ex_w[0] + ((pr[1] - df[1])/df[1]) * ex_w[1] + ((df[2] - pr[2])/df[2]) * ex_w[2] + ((df[3] - pr[3])/df[3]) * ex_w[3]
+    # score = 0
+    score = (df[0] - pr[0]) * ex_w[0] + (pr[1] - df[1]) * ex_w[1] + (df[2] - pr[2]) * ex_w[2] + (df[3] - pr[3]) * ex_w[3]
+    # score = ((df[0] - pr[0])/df[0]) * ex_w[0] + ((pr[1] - df[1])/df[1]) * ex_w[1] + ((df[2] - pr[2])/df[2]) * ex_w[2] + ((df[3] - pr[3])/df[3]) * ex_w[3]
+    # score = gmean([abs(((df[0] - pr[0])/df[0]) * ex_w[0]), abs(((pr[1] - df[1])/df[1]) * ex_w[1]), abs(((df[2] - pr[2])/df[2]) * ex_w[2]), abs(((df[3] - pr[3])/df[3]) * ex_w[3])])
     # for i in range(len(df)):
     #     if i == 1:
     #         score += (pr[i] - df[i])/df[i]
     #     else:
     #         score += (df[i] - pr[i])/df[i]
-    return round(score, 2)
+    # res = [df[0]/pr[0], pr[1]/df[1], df[2]/pr[2], df[3]/pr[3]]
+    # for l in range(4):
+    #     if res[l]<0:
+    #         print(df[l], pr[l])
+    # score = np.log(np.abs(df[0]/pr[0] * pr[1]/df[1] * df[2]/pr[2] * df[3]/pr[3]))
+
+    return round(score, 6)
 
 def set_fitness_function(solution, model, knobs, opt):
     Dataset_sol = RocksDBDataset(solution, np.zeros((len(solution), 1)))
-    loader_sol = DataLoader(Dataset_sol, shuffle=False, batch_size=8)
+    loader_sol = DataLoader(Dataset_sol, shuffle=False, batch_size=opt.GA_batch_size)
 
     
     ## Set phase
@@ -138,17 +157,9 @@ def set_fitness_function(solution, model, knobs, opt):
             if opt.mode == 'dnn':
                 data = torch.reshape(data, (data.shape[0], -1))
             fitness_batch, _ = model(data)
-            fitness_batch = knobs.scaler_em.inverse_transform(fitness_batch.cpu().numpy())
+            # fitness_batch = knobs.scaler_em.inverse_transform(fitness_batch.cpu().numpy())
+            fitness_batch = fitness_batch.cpu().numpy()
             fitness_batch = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness_batch]
-            # TODO:
-            #   make score function to compare fitness values with just one scalar. Current is 4 of list
-            #   compare with default external metrics on data/external/default_external.csv
-            #   How to make score?
-
-
-            # fitness_batch = fitness_batch.detach().cpu().numpy() # scaled.shape = (batch_size, 1)
-            # fitness_batch = fitness_batch.ravel() # fitness_batch.shape = (batch_size,)
-            # fitness_batch = fitness_batch.tolist() # numpy -> list
             fitness_f += fitness_batch # [1,2] += [3,4,5] --> [1,2,3,4,5]
     
     return fitness_f
@@ -167,6 +178,10 @@ def GA_optimization(knobs, fitness_function, logger, opt):
         if opt.mode == 'raw':
             scaled_pool = torch.Tensor(knobs.scaler_k.transform(current_solution_pool)).cuda()
             fitness = set_fitness_function(scaled_pool, fitness_function, knobs, opt)
+        elif opt.mode == 'RF':
+            scaled_pool = knobs.scaler_k.transform(current_solution_pool)
+            fitness = fitness_function.predict(scaled_pool)
+            fitness = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness]
         else:
             onehot_pool = knobs.load_knobsOneHot(k=current_solution_pool, save=False)
             onehot_pool = torch.Tensor(onehot_pool).cuda()
@@ -220,8 +235,10 @@ def GA_optimization(knobs, fitness_function, logger, opt):
     
     recommend_command = make_dbbench_command(opt.target, recommend_command)
 
-    logger.info(f"db_bench command is  {recommend_command} > /home/jhj/je_result.txt")
+    recommend_command += ' > /home/jieun/result.txt'
+    logger.info(f"db_bench command is  {recommend_command}")
     
+    return recommend_command
     # final_solution_pool = pd.DataFrame(best_solution_pool, columns=knobs.columns)
     # name = get_filename('final_solutions', 'best_config', '.csv')
     # final_solution_pool.to_csv(os.path.join('final_solutions', name))
