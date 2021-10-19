@@ -149,11 +149,9 @@ def main():
     
     logger.info("## Configuration Recommendation DONE ##")
 
-<<<<<<< HEAD
     exec_benchmark(recommend_command, opt)
 
-=======
->>>>>>> b287c69e99df672f17803eb581f1f3713633646d
+
 
 if __name__ == '__main__':
     try:
