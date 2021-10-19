@@ -15,7 +15,6 @@ def euclidean_distance(a, b):
     res = a - b
     res = res ** 2
     res = np.sqrt(res)
-#     return res
     return np.average(res)
 
 def get_euclidean_distance(internal_dict, logger, opt):
@@ -123,21 +122,7 @@ def train_fitness_function(knobs, logger, opt):
         return model, outputs
 
 def score_function(df, pr, ex_w):
-    # score = 0
     score = (df[0] - pr[0]) * ex_w[0] + (pr[1] - df[1]) * ex_w[1] + (df[2] - pr[2]) * ex_w[2] + (df[3] - pr[3]) * ex_w[3]
-    # score = ((df[0] - pr[0])/df[0]) * ex_w[0] + ((pr[1] - df[1])/df[1]) * ex_w[1] + ((df[2] - pr[2])/df[2]) * ex_w[2] + ((df[3] - pr[3])/df[3]) * ex_w[3]
-    # score = gmean([abs(((df[0] - pr[0])/df[0]) * ex_w[0]), abs(((pr[1] - df[1])/df[1]) * ex_w[1]), abs(((df[2] - pr[2])/df[2]) * ex_w[2]), abs(((df[3] - pr[3])/df[3]) * ex_w[3])])
-    # for i in range(len(df)):
-    #     if i == 1:
-    #         score += (pr[i] - df[i])/df[i]
-    #     else:
-    #         score += (df[i] - pr[i])/df[i]
-    # res = [df[0]/pr[0], pr[1]/df[1], df[2]/pr[2], df[3]/pr[3]]
-    # for l in range(4):
-    #     if res[l]<0:
-    #         print(df[l], pr[l])
-    # score = np.log(np.abs(df[0]/pr[0] * pr[1]/df[1] * df[2]/pr[2] * df[3]/pr[3]))
-
     return round(score, 6)
 
 def set_fitness_function(solution, model, knobs, opt):
@@ -157,7 +142,7 @@ def set_fitness_function(solution, model, knobs, opt):
             if opt.mode == 'dnn':
                 data = torch.reshape(data, (data.shape[0], -1))
             fitness_batch, _ = model(data)
-            # fitness_batch = knobs.scaler_em.inverse_transform(fitness_batch.cpu().numpy())
+            # fitness_batch = knobs.scaler_em.inverse_transform(fitness_batch.cpu().numpy()) # if fitness_batch's type is torch.Tensor()
             fitness_batch = fitness_batch.cpu().numpy()
             fitness_batch = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness_batch]
             fitness_f += fitness_batch # [1,2] += [3,4,5] --> [1,2,3,4,5]
@@ -172,7 +157,7 @@ def GA_optimization(knobs, fitness_function, logger, opt):
 
     
     current_solution_pool = configs[:opt.pool] # dataframe
-    # current_solution_pool = torch.Tensor(current_solution_pool.to_numpy()).cuda()
+    # current_solution_pool = torch.Tensor(current_solution_pool.to_numpy()).cuda() # if current_solution_pool's type is dataframe
 
     for i in range(opt.generation):
         if opt.mode == 'raw':
@@ -190,10 +175,6 @@ def GA_optimization(knobs, fitness_function, logger, opt):
             fitness = set_fitness_function(k2v_pool, fitness_function, knobs, opt)
 
         fitness = [_*-1 for _ in fitness] # bigger is good
-        # fitness = knobs.scaler_em.inverse_transform(fitness)
-        # print(fitness)
-        # print(len(fitness))
-        # assert False
 
         ## best parents selection
         idx_fitness = np.argsort(fitness)[:n_pool_half]
@@ -239,10 +220,6 @@ def GA_optimization(knobs, fitness_function, logger, opt):
     logger.info(f"db_bench command is  {recommend_command}")
     
     return recommend_command
-    # final_solution_pool = pd.DataFrame(best_solution_pool, columns=knobs.columns)
-    # name = get_filename('final_solutions', 'best_config', '.csv')
-    # final_solution_pool.to_csv(os.path.join('final_solutions', name))
-    # logger.info(f"save best config to {os.path.join('final_solutions', name)}")
         
 def make_dbbench_command(trg_wk, rc_cmd):
     wk_info = pd.read_csv('data/rocksdb_workload_info.csv', index_col=0)
@@ -258,5 +235,3 @@ def make_dbbench_command(trg_wk, rc_cmd):
     cmd += f_cmd + " " + rc_cmd + b_cmd
 
     return cmd
-    
-
