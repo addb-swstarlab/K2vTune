@@ -25,5 +25,5 @@ python main.py --target {target number} --tf --eval --model_path {model_path} \
 --generation {generation number in genetic algorithm} --ex_weight 0.25 --ex_weight 0.25 --ex_weight 0.25 --ex_weight 0.25 
 ```
 
-## Updated History
+## Update History
 * (211018) update data/README.md to explain data samples and README.md how to train the model

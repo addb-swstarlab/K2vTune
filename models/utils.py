@@ -23,12 +23,6 @@ def get_logger(log_path='./logs'):
     date_format = '%Y-%m-%d %H:%M:%S'
     formatter = logging.Formatter('%(asctime)s[%(levelname)s] %(filename)s:%(lineno)s  %(message)s', date_format)
     name = get_filename(log_path, 'log', '.log')
-    # i = 0
-    # today = datetime.datetime.now()
-    # name = 'log-'+today.strftime('%Y%m%d')+'-'+'%02d'%i+'.log'
-    # while os.path.exists(os.path.join(log_path, name)):
-    #     i += 1
-    #     name = 'log-'+today.strftime('%Y%m%d')+'-'+'%02d'%i+'.log'
     
     fileHandler = logging.FileHandler(os.path.join(log_path, name))
     streamHandler = logging.StreamHandler()

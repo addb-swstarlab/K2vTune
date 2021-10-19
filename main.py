@@ -100,7 +100,9 @@ def main():
         logger.info("## Train Fitness Function ##")
         fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)
 
+        # if outputs' type are torch.tensor
         # pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
+        # if outputs' type are numpy array
         pred = np.round(knobs.scaler_em.inverse_transform(outputs), 2)
         true = knobs.em_te.to_numpy()
 
@@ -137,10 +139,7 @@ def main():
             ci_res += res
         logger.info(f'average pcc score = {pcc_res/len(true):.4f}')
         logger.info(f'average ci score = {ci_res/len(true):.4f}')
-        # ex_col = external_dict[0].columns
-        # for i, c in enumerate(ex_col):
-        #     logger.info(f'{c:4}\t r2 score = {r2_res[i]:.4f}')
-        assert False
+        
     else:
         logger.exception("Choose Model mode, '--train' or '--eval'")
     
@@ -150,8 +149,11 @@ def main():
     
     logger.info("## Configuration Recommendation DONE ##")
 
+<<<<<<< HEAD
     exec_benchmark(recommend_command, opt)
 
+=======
+>>>>>>> b287c69e99df672f17803eb581f1f3713633646d
 
 if __name__ == '__main__':
     try:
