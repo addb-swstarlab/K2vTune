@@ -179,19 +179,6 @@ class Attention(nn.Module):
         else:
             raise NotImplementedError
 
-def mask_3d(inputs, seq_len, mask_value=0.):
-    batches = inputs.size()[0]
-    assert batches == len(seq_len)
-    max_idx = max(seq_len)
-    for n, idx in enumerate(seq_len):
-        if idx < max_idx.item():
-            if len(inputs.size()) == 3:
-                inputs[n, idx.int():, :] = mask_value
-            else:
-                assert len(inputs.size()) == 2, "The size of inputs must be 2 or 3, received {}".format(inputs.size())
-                inputs[n, idx.int():] = mask_value
-    return inputs
-
 class GRUNet(nn.Module):
     def __init__(self, encoder, decoder, tf, batch_size):
         super(GRUNet, self).__init__()
