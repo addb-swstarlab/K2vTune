@@ -10,7 +10,6 @@ from scipy.stats import pearsonr
 from lifelines.utils import concordance_index
 
 os.system('clear')
-# os.system('rm logs/20210928/log-20210928-53.log')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--target', type=int, default=1, help='Choose target workload')
@@ -100,7 +99,9 @@ def main():
         logger.info("## Train Fitness Function ##")
         fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)
 
+        # if outputs' type are torch.tensor
         # pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
+        # if outputs' type are numpy array
         pred = np.round(knobs.scaler_em.inverse_transform(outputs), 2)
         true = knobs.em_te.to_numpy()
 
@@ -137,10 +138,7 @@ def main():
             ci_res += res
         logger.info(f'average pcc score = {pcc_res/len(true):.4f}')
         logger.info(f'average ci score = {ci_res/len(true):.4f}')
-        # ex_col = external_dict[0].columns
-        # for i, c in enumerate(ex_col):
-        #     logger.info(f'{c:4}\t r2 score = {r2_res[i]:.4f}')
-        assert False
+        
     else:
         logger.exception("Choose Model mode, '--train' or '--eval'")
     
