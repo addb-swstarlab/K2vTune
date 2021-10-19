@@ -8,9 +8,9 @@ from models.steps import get_euclidean_distance, train_knob2vec, train_fitness_f
 from sklearn.metrics import r2_score
 from scipy.stats import pearsonr
 from lifelines.utils import concordance_index
+from benchmark import exec_benchmark
 
 os.system('clear')
-# os.system('rm logs/20210928/log-20210928-53.log')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--target', type=int, default=1, help='Choose target workload')
@@ -150,11 +150,7 @@ def main():
     
     logger.info("## Configuration Recommendation DONE ##")
 
-    os.system(f'sshpass -p 1423 ssh jieun@165.132.106.45 "{recommend_command}"')
-    if opt.save:
-        os.system(f'sshpass -p 1423 ssh jieun@165.132.106.45 "sh parse.sh"')
-    else:
-        os.system(f'sshpass -p 1423 ssh jieun@165.132.106.45 "python3 show_ex.py"')
+    exec_benchmark(recommend_command, opt)
 
 
 if __name__ == '__main__':
