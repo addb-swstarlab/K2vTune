@@ -148,12 +148,6 @@ def main():
     
     logger.info("## Configuration Recommendation DONE ##")
 
-    os.system(f'sshpass -p 1423 ssh jieun@165.132.106.45 "{recommend_command}"')
-    if opt.save:
-        os.system(f'sshpass -p 1423 ssh jieun@165.132.106.45 "sh parse.sh"')
-    else:
-        os.system(f'sshpass -p 1423 ssh jieun@165.132.106.45 "python3 show_ex.py"')
-
 
 if __name__ == '__main__':
     try:
