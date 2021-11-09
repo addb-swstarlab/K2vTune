@@ -149,6 +149,7 @@ def main():
     
     logger.info("## Configuration Recommendation DONE ##")
 
+    ## Execute db_benchmark with recommended commands by transporting to other server
     exec_benchmark(recommend_command, opt)
 
 

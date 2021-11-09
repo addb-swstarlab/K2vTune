@@ -46,11 +46,17 @@ class Knob:
         self.default_trg_em = self.scaler_em.transform([self.default_trg_em])[0]
 
     def get_trg_default(self):
+        '''
+            To get default results on target workload, self.target_wk
+        '''
         default_em = pd.read_csv(self.DEFAULT_EM_PATH,index_col=0)
         default_em = default_em.to_numpy()
         return default_em[self.target_wk] # [time, rate, waf, sa]
 
     def get_index_value(self):
+        '''
+            To get index value from each knob data
+        '''
         self.index_value = dict()
         for col in self.columns:
             iv = self.knobs[[col]].value_counts()#.reset_index(level=0).drop(columns=0)
@@ -59,6 +65,9 @@ class Knob:
         return self.index_value
     
     def make_knobsOneHot(self, k):
+        '''
+            make one-hot vector from knob, this step takes much time and so it should run few
+        '''
         knobs_one_hot = torch.Tensor()
         for i in range(len(k)):   
             sample = torch.Tensor()
@@ -72,9 +81,14 @@ class Knob:
         
 
     def load_knobsOneHot(self, k=None, save=True):
-        if os.path.exists(self.KNOBSONEHOT_PATH) and save:
+        '''
+            if there is pregained one-hot numpy file, do first command.
+            if save is False, this is used at Genetic Algorithm steps
+            Otherwise, make one-hot vector and save the vectors to .npy.
+        '''
+        if os.path.exists(self.KNOBSONEHOT_PATH) and save: 
             return np.load(self.KNOBSONEHOT_PATH)
-        elif not save: # for GA
+        elif not save: # for GA not save gained one-hot vectors
             return self.make_knobsOneHot(k)
         else:
             np.save(self.KNOBSONEHOT_PATH, self.make_knobsOneHot(self.knobs))
@@ -83,7 +97,7 @@ class Knob:
     def set_lookuptable(self, table):
         self.lookuptable = table
 
-    def set_knob2vec(self):
+    def set_knob2vec(self): ## set knob2vec and wrap them to tensor
         self.knob2vec_tr = torch.Tensor(self.get_knob2vec(self.X_tr, self.lookuptable)).cuda()
         self.knob2vec_te = torch.Tensor(self.get_knob2vec(self.X_te, self.lookuptable)).cuda()
 
