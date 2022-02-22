@@ -43,15 +43,16 @@ class Knob:
         self.norm_k_tr = torch.Tensor(self.scaler_k.transform(self.knob_tr)).cuda()
         self.norm_k_te = torch.Tensor(self.scaler_k.transform(self.knob_te)).cuda()
 
-        self.default_trg_em = self.scaler_em.transform([self.default_trg_em])[0]
+        # self.default_trg_em = self.scaler_em.transform([self.default_trg_em])[0]
+        self.default_trg_em = self.scaler_em.transform(self.default_trg_em)
 
     def get_trg_default(self):
         '''
             To get default results on target workload, self.target_wk
         '''
         default_em = pd.read_csv(self.DEFAULT_EM_PATH,index_col=0)
-        default_em = default_em.to_numpy()
-        return default_em[self.target_wk] # [time, rate, waf, sa]
+        # default_em = default_em.to_numpy()
+        return default_em.iloc[self.target_wk:self.target_wk+1, :] # [time, rate, waf, sa]
 
     def get_index_value(self):
         '''

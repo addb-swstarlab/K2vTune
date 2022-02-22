@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import torch
 from torch.utils.data import DataLoader
-from models.network import RocksDBDataset, SingleNet, GRUNet, EncoderRNN, DecoderRNN, AttnDecoderRNN, Attention
+from models.network import RocksDBDataset, SingleNet, GRUNet, MHANet, EncoderRNN, DecoderRNN, AttnDecoderRNN, Attention, EncoderDNN, MHADecoderDNN
 from models.train import train, valid
 from models.utils import get_filename
 import models.rocksdb_option as option
@@ -74,7 +74,7 @@ def train_fitness_function(knobs, logger, opt):
     elif opt.mode == 'raw' or opt.mode == 'RF':
         Dataset_K2vec_tr = RocksDBDataset(knobs.norm_k_tr, knobs.norm_em_tr)
         Dataset_K2vec_te = RocksDBDataset(knobs.norm_k_te, knobs.norm_em_te)
-    else:
+    else: # gru, attngru
         Dataset_K2vec_tr = RocksDBDataset(knobs.knob2vec_tr, knobs.norm_em_tr)
         Dataset_K2vec_te = RocksDBDataset(knobs.knob2vec_te, knobs.norm_em_te)
 
@@ -94,15 +94,19 @@ def train_fitness_function(knobs, logger, opt):
         model = GRUNet(encoder=encoder, decoder=decoder, tf=opt.tf, batch_size=opt.batch_size).cuda()
     elif opt.mode == 'raw':
         model = SingleNet(input_dim=knobs.norm_k_tr.shape[1], hidden_dim=16, output_dim=knobs.norm_em_tr.shape[-1]).cuda()
+    elif opt.mode == 'mha_dnn':
+        encoder = EncoderDNN(input_dim=knobs.knob2vec_tr.shape[-1], hidden_dim=opt.hidden_size)
+        decoder = MHADecoderDNN(input_dim=1, hidden_dim=opt.hidden_size, output_dim=1)
+        model = MHANet(encoder=encoder, decoder=decoder, batch_size=opt.batch_size).cuda()
 
     if opt.train:       
         logger.info(f"[Train MODE] Training Model") 
         best_loss = 100
         name = get_filename('model_save', 'model', '.pt')
         for epoch in range(opt.epochs):
-            loss_tr = train(model, loader_K2vec_tr, opt.lr)
+            loss_tr = train(model, loader_K2vec_tr, opt.lr, opt.mode)
             if opt.mode != 'dnn': model.tf = False
-            loss_te, outputs = valid(model, loader_K2vec_te)
+            loss_te, outputs = valid(model, loader_K2vec_te, opt.mode)
             if opt.mode != 'dnn': model.tf = opt.tf
         
             logger.info(f"[{epoch:02d}/{opt.epochs}] loss_tr: {loss_tr:.8f}\tloss_te:{loss_te:.8f}")
@@ -118,10 +122,12 @@ def train_fitness_function(knobs, logger, opt):
     elif opt.eval:
         logger.info(f"[Eval MODE] Trained Model Loading with path: {opt.model_path}")
         model = torch.load(os.path.join('model_save',opt.model_path))
-        _, outputs = valid(model, loader_K2vec_te)
+        _, outputs = valid(model, loader_K2vec_te, opt.mode)
         return model, outputs
 
 def score_function(df, pr, ex_w):
+    if df.size > 1:
+        df = df.squeeze()
     score = (df[0] - pr[0]) * ex_w[0] + (pr[1] - df[1]) * ex_w[1] + (df[2] - pr[2]) * ex_w[2] + (df[3] - pr[3]) * ex_w[3]
     return round(score, 6)
 
@@ -141,7 +147,7 @@ def set_fitness_function(solution, model, knobs, opt):
         for data, _ in loader_sol:
             if opt.mode == 'dnn':
                 data = torch.reshape(data, (data.shape[0], -1))
-            fitness_batch, _ = model(data)
+            fitness_batch, _ = model(data) # TODO 20220222
             # fitness_batch = knobs.scaler_em.inverse_transform(fitness_batch.cpu().numpy()) # if fitness_batch's type is torch.Tensor()
             fitness_batch = fitness_batch.cpu().numpy()
             fitness_batch = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness_batch]
@@ -216,7 +222,7 @@ def GA_optimization(knobs, fitness_function, logger, opt):
     
     recommend_command = make_dbbench_command(opt.target, recommend_command)
 
-    recommend_command += ' > /home/jieun/result.txt'
+    recommend_command += ' > /jieun/result.txt'
     logger.info(f"db_bench command is  {recommend_command}")
     
     return recommend_command
