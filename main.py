@@ -85,6 +85,7 @@ def main():
     knobs.split_data(similar_wk)
     knobs.scale_data()
     logger.info("## Train Knob2Vec for similar workload ##")
+    
     # if there is pre-trained model results, just load numpy file or train model and get table results
     LOOKUPTABLE_PATH = os.path.join('data/lookuptable', str(knobs.s_wk), 'LookupTable.npy')
     if os.path.exists(LOOKUPTABLE_PATH):
@@ -101,9 +102,9 @@ def main():
         fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)
 
         # if outputs' type are torch.tensor
-        # pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
+        pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
         # if outputs' type are numpy array
-        pred = np.round(knobs.scaler_em.inverse_transform(outputs), 2)
+        # pred = np.round(knobs.scaler_em.inverse_transform(outputs), 2)
         true = knobs.em_te.to_numpy()
 
         for i in range(10):

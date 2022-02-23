@@ -1,3 +1,6 @@
+from base64 import decode
+from json import decoder
+from tokenize import Single
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
@@ -30,6 +33,42 @@ class SingleNet(nn.Module):
 #         self.h = self.hidden(self.x_kb)
         self.x_im = self.im_fc(self.x_kb)
         return self.x_im, None
+
+class EncoderDNN(nn.Module):
+    def __init__(self, input_dim, hidden_dim):
+        super(EncoderDNN, self).__init__()
+        self.input_dim = input_dim #3327
+        self.hidden_dim = hidden_dim # 1024
+        self.linear1 = nn.Linear(self.input_dim, self.hidden_dim)
+        # self.linear2 = nn.Linear(128, self.hidden_dim)
+        
+    def forward(self, x):
+        x = self.linear1(x)
+        # x = self.linear2(x)
+        x = torch.relu(x)
+        return x
+    
+class MHADecoderDNN(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim):
+        super(MHADecoderDNN, self).__init__()
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.output_dim = output_dim
+        self.hidden = nn.Linear(self.input_dim, self.hidden_dim)
+        self.multihead_attn = nn.MultiheadAttention(embed_dim=self.hidden_dim, num_heads=2)
+        self.fc1 = nn.Linear(self.hidden_dim, 16)
+        self.fc2 = nn.Linear(16, self.output_dim)
+                
+    def forward(self, x, eo):
+        h = self.hidden(x.unsqueeze(-1)) # (batch, target_len, 1) --> (batch, target_len, hidden)
+        h = h.transpose(1, 0) # (targe_len, batch, hidden)
+        eo = eo.transpose(1, 0)
+        attn_outputs, attn_output_weights = self.multihead_attn(h, eo, eo)
+        attn_outputs = attn_outputs.transpose(1, 0) # (batch, target_len, hidden)
+        outputs = self.fc1(attn_outputs)
+        outputs = torch.relu(outputs)
+        outputs = self.fc2(outputs) # (batch, target_len, 1)
+        return outputs.squeeze(), attn_output_weights
 
 class EncoderRNN(nn.Module):
     def __init__(self, input_dim, hidden_dim):
@@ -208,3 +247,27 @@ class GRUNet(nn.Module):
                 self.attn_weights = torch.cat((self.attn_weights, self.attn_weight.unsqueeze(-1)), dim=2)
 
         return self.outputs, self.attn_weights
+
+class MHANet(nn.Module):
+    def __init__(self, encoder, decoder, batch_size):
+        super(MHANet, self).__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+        self.trg_len = 4
+        self.batch_size = batch_size
+        
+    def forward(self, x, target=None):
+        self.encoder_outputs = self.encoder(x)
+        
+        if target is None: # inference
+            decoder_input = torch.zeros((self.batch_size, self.trg_len)).cuda()
+            for di in range(self.trg_len):
+                decoder_output, self.attn_w = self.decoder(decoder_input, self.encoder_outputs)
+                if decoder_output.dim() == 1:
+                    decoder_output = decoder_output.unsqueeze(-1)
+                decoder_input[:, di:di+1] = decoder_output[:,-1:]
+            self.outputs = decoder_output
+        else:
+            self.outputs, self.attn_w = self.decoder(target, self.encoder_outputs)
+            
+        return self.outputs, self.attn_w
