@@ -30,6 +30,7 @@ parser.add_argument('--generation', type=int, default=1000, help='Define the num
 parser.add_argument('--GA_batch_size', type=int, default=32, help='Define GA batch size')
 parser.add_argument('--ex_weight', type=float, action='append', help='Define external metrics weight to calculate score')
 parser.add_argument('--save', action='store_true', help='Choose save the score on csv file or just show')
+parser.add_argument('--step', action='store_true', help='If want to see stepped results, trigger this')
 
 opt = parser.parse_args()
 
@@ -101,9 +102,9 @@ def main():
         fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)
 
         # if outputs' type are torch.tensor
-        # pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
+        pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
         # if outputs' type are numpy array
-        pred = np.round(knobs.scaler_em.inverse_transform(outputs), 2)
+        # pred = np.round(knobs.scaler_em.inverse_transform(outputs), 2)
         true = knobs.em_te.to_numpy()
 
         for i in range(10):
@@ -143,14 +144,17 @@ def main():
     else:
         logger.exception("Choose Model mode, '--train' or '--eval'")
     
-    recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
+    recommend_command, step_recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
 
     logger.info("## Train/Load Fitness Function DONE ##")
-    
     logger.info("## Configuration Recommendation DONE ##")
-
-    ## Execute db_benchmark with recommended commands by transporting to other server
-    exec_benchmark(recommend_command, opt)
+  
+    if opt.step:
+        for s_cmd in step_recommend_command:
+            exec_benchmark(s_cmd, opt)
+    else:
+        ## Execute db_benchmark with recommended commands by transporting to other server
+        exec_benchmark(recommend_command, opt)
 
 
 

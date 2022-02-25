@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import torch
 from torch.utils.data import DataLoader
-from models.network import RocksDBDataset, SingleNet, GRUNet, MHANet, EncoderRNN, DecoderRNN, AttnDecoderRNN, Attention, EncoderDNN, MHADecoderDNN
+from models.network import RocksDBDataset, SingleNet, GRUNet, EncoderRNN, DecoderRNN, AttnDecoderRNN, Attention
 from models.train import train, valid
 from models.utils import get_filename
 import models.rocksdb_option as option
@@ -94,19 +94,15 @@ def train_fitness_function(knobs, logger, opt):
         model = GRUNet(encoder=encoder, decoder=decoder, tf=opt.tf, batch_size=opt.batch_size).cuda()
     elif opt.mode == 'raw':
         model = SingleNet(input_dim=knobs.norm_k_tr.shape[1], hidden_dim=16, output_dim=knobs.norm_em_tr.shape[-1]).cuda()
-    elif opt.mode == 'mha_dnn':
-        encoder = EncoderDNN(input_dim=knobs.knob2vec_tr.shape[-1], hidden_dim=opt.hidden_size)
-        decoder = MHADecoderDNN(input_dim=1, hidden_dim=opt.hidden_size, output_dim=1)
-        model = MHANet(encoder=encoder, decoder=decoder, batch_size=opt.batch_size).cuda()
 
     if opt.train:       
         logger.info(f"[Train MODE] Training Model") 
         best_loss = 100
         name = get_filename('model_save', 'model', '.pt')
         for epoch in range(opt.epochs):
-            loss_tr = train(model, loader_K2vec_tr, opt.lr, opt.mode)
+            loss_tr = train(model, loader_K2vec_tr, opt.lr)
             if opt.mode != 'dnn': model.tf = False
-            loss_te, outputs = valid(model, loader_K2vec_te, opt.mode)
+            loss_te, outputs = valid(model, loader_K2vec_te)
             if opt.mode != 'dnn': model.tf = opt.tf
         
             logger.info(f"[{epoch:02d}/{opt.epochs}] loss_tr: {loss_tr:.8f}\tloss_te:{loss_te:.8f}")
@@ -122,7 +118,7 @@ def train_fitness_function(knobs, logger, opt):
     elif opt.eval:
         logger.info(f"[Eval MODE] Trained Model Loading with path: {opt.model_path}")
         model = torch.load(os.path.join('model_save',opt.model_path))
-        _, outputs = valid(model, loader_K2vec_te, opt.mode)
+        _, outputs = valid(model, loader_K2vec_te)
         return model, outputs
 
 def score_function(df, pr, ex_w):
@@ -147,7 +143,7 @@ def set_fitness_function(solution, model, knobs, opt):
         for data, _ in loader_sol:
             if opt.mode == 'dnn':
                 data = torch.reshape(data, (data.shape[0], -1))
-            fitness_batch, _ = model(data) # TODO 20220222
+            fitness_batch, _ = model(data)
             # fitness_batch = knobs.scaler_em.inverse_transform(fitness_batch.cpu().numpy()) # if fitness_batch's type is torch.Tensor()
             fitness_batch = fitness_batch.cpu().numpy()
             fitness_batch = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness_batch]
@@ -161,10 +157,17 @@ def GA_optimization(knobs, fitness_function, logger, opt):
     n_pool_half = int(opt.pool/2)
     mutation = int(n_configs * 0.4)
 
+    ## use pool nums of top to initialize current_solution_pool
+    scaled_em = knobs.scaler_em.transform(knobs.s_external_metrics)
+    em_score = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in scaled_em]
+    em_score = [_*-1 for _ in em_score]
+    idx_em = np.argsort(em_score)[:opt.pool]
     
-    current_solution_pool = configs[:opt.pool] # dataframe
+    current_solution_pool = pd.DataFrame(configs.to_numpy()[idx_em, :], columns=knobs.columns)
+    # current_solution_pool = configs[:opt.pool] # dataframe
     # current_solution_pool = torch.Tensor(current_solution_pool.to_numpy()).cuda() # if current_solution_pool's type is dataframe
-
+    step_best_solution = []
+    
     for i in range(opt.generation):
         if opt.mode == 'raw':
             scaled_pool = torch.Tensor(knobs.scaler_k.transform(current_solution_pool)).cuda()
@@ -210,23 +213,38 @@ def GA_optimization(knobs, fitness_function, logger, opt):
         current_solution_pool = np.vstack([best_solution_pool, new_solution_pool]) # current_solution_pool.shape = (n_pool,22)
         current_solution_pool = pd.DataFrame(current_solution_pool, columns=knobs.columns)
         
+        ## save best solution at each step
+        step_best_solution.append(best_solution_pool[0])
+        
     final_solution = best_solution_pool[0]
     recommend_command = ''
-
-    for idx, col in enumerate(knobs.columns):
-        if col=='compression_type':
-            ct = ["snappy", "zlib", "lz4", "none"]
-            recommend_command += f'-{col}={ct[int(final_solution[idx])]} '
-        else:
-            recommend_command += f'-{col}={int(final_solution[idx])} '
+    step_recommend_command = []
     
+    for idx, col in enumerate(knobs.columns):                 
+        recommend_command = convert_int_to_category(col, recommend_command, final_solution[idx])
+        
     recommend_command = make_dbbench_command(opt.target, recommend_command)
 
-    recommend_command += ' > /jieun/result.txt'
     logger.info(f"db_bench command is  {recommend_command}")
     
-    return recommend_command
-        
+    for step in range(len(step_best_solution)):
+        cmd = ''
+        step_solution = step_best_solution[step]
+        for idx, col in enumerate(knobs.columns):
+            cmd = convert_int_to_category(col, cmd, step_solution[idx])
+        cmd = make_dbbench_command(opt.target, cmd)
+        step_recommend_command.append(cmd)
+    
+    return recommend_command, step_recommend_command
+
+def convert_int_to_category(col, cmd, s):
+    if col=='compression_type':
+            ct = ["snappy", "zlib", "lz4", "none"]
+            cmd += f'-{col}={ct[int(s)]} '
+    else:
+        cmd += f'-{col}={int(s)} '
+    return cmd
+
 def make_dbbench_command(trg_wk, rc_cmd):
     wk_info = pd.read_csv('data/rocksdb_workload_info.csv', index_col=0)
     f_wk_info = wk_info.loc[:,:'num']
@@ -238,6 +256,6 @@ def make_dbbench_command(trg_wk, rc_cmd):
     if not np.isnan(b_wk_info.loc[trg_wk][1]):
         b_cmd += f"--{b_wk_info.columns[1]}={int(b_wk_info.loc[trg_wk][1])}"
 
-    cmd += f_cmd + " " + rc_cmd + b_cmd
+    cmd += f_cmd + " " + rc_cmd + b_cmd + ' > /jieun/result.txt'
 
     return cmd
