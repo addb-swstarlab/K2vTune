@@ -144,7 +144,7 @@ def main():
     else:
         logger.exception("Choose Model mode, '--train' or '--eval'")
     
-    recommend_command, step_recommend_command = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
+    recommend_command, step_recommend_command, step_best_fitness = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
 
     logger.info("## Train/Load Fitness Function DONE ##")
     logger.info("## Configuration Recommendation DONE ##")
@@ -152,6 +152,9 @@ def main():
     if opt.step:
         for s_cmd in step_recommend_command:
             exec_benchmark(s_cmd, opt)
+        pd_steps = pd.read_csv('steps_fitness.csv', index_col=0)
+        pd_steps[f'{opt.target}_{opt.mode}'] = step_best_fitness
+        pd_steps.to_csv('steps_fitness.csv')
     else:
         ## Execute db_benchmark with recommended commands by transporting to other server
         exec_benchmark(recommend_command, opt)

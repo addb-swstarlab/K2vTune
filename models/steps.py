@@ -167,6 +167,7 @@ def GA_optimization(knobs, fitness_function, logger, opt):
     # current_solution_pool = configs[:opt.pool] # dataframe
     # current_solution_pool = torch.Tensor(current_solution_pool.to_numpy()).cuda() # if current_solution_pool's type is dataframe
     step_best_solution = []
+    step_best_fitness = []
     
     for i in range(opt.generation):
         if opt.mode == 'raw':
@@ -215,6 +216,7 @@ def GA_optimization(knobs, fitness_function, logger, opt):
         
         ## save best solution at each step
         step_best_solution.append(best_solution_pool[0])
+        step_best_fitness.append(-np.min(fitness))
         
     final_solution = best_solution_pool[0]
     recommend_command = ''
@@ -235,7 +237,7 @@ def GA_optimization(knobs, fitness_function, logger, opt):
         cmd = make_dbbench_command(opt.target, cmd)
         step_recommend_command.append(cmd)
     
-    return recommend_command, step_recommend_command
+    return recommend_command, step_recommend_command, step_best_fitness
 
 def convert_int_to_category(col, cmd, s):
     if col=='compression_type':
