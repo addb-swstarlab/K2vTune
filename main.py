@@ -31,6 +31,7 @@ parser.add_argument('--GA_batch_size', type=int, default=32, help='Define GA bat
 parser.add_argument('--ex_weight', type=float, action='append', help='Define external metrics weight to calculate score')
 parser.add_argument('--save', action='store_true', help='Choose save the score on csv file or just show')
 parser.add_argument('--step', action='store_true', help='If want to see stepped results, trigger this')
+parser.add_argument('--sample_size', type=int, default=20000, help='Define train sample size, max is 20000')
 
 opt = parser.parse_args()
 
@@ -74,7 +75,7 @@ def main():
     logger.info('## get raw datas DONE ##')
 
 
-    knobs = Knob(raw_knobs, internal_dict, external_dict, opt.target)
+    knobs = Knob(raw_knobs, internal_dict, external_dict, opt.target, opt.sample_size)
 
 
     logger.info("## Workload Mapping ##")
