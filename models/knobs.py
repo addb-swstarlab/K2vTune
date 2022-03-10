@@ -5,8 +5,10 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
+WK_NUM = 16
+
 class Knob:
-    def __init__(self, knobs, internal_metrics, external_metrics, target_wk):
+    def __init__(self, knobs, internal_metrics, external_metrics, target_wk, sample_size):
         """
             This class includes knobs, internal metrics, external metrics, target workload info and scaler of data
         """
@@ -20,7 +22,21 @@ class Knob:
         self.knobs_one_hot = self.load_knobsOneHot()
         self.TABLE_PATH = 'data/lookuptable'
         self.DEFAULT_EM_PATH = 'data/external/default_external.csv'
-        self.default_trg_em = self.get_trg_default()
+        self.default_trg_em = self.get_trg_default()     
+        self.sample_size = sample_size # define sample size, max is 20,000
+        self.reduce_sample_size()
+
+    def reduce_sample_size(self):
+        if self.sample_size != self.knobs.shape[0]:
+            RandomGenerator = np.random.RandomState(seed=1234) # fix random state
+            self.rand_idx = RandomGenerator.randint(0, self.knobs.shape[0], self.sample_size)
+            self.knobs = self.knobs.iloc[self.rand_idx]
+            
+            for wk in range(WK_NUM):
+                self.internal_metrics[wk] = self.internal_metrics[wk].iloc[self.rand_idx]
+                self.external_metrics[wk] = self.external_metrics[wk].iloc[self.rand_idx]
+                
+            self.knobs_one_hot = self.knobs_one_hot[self.rand_idx]
 
     def split_data(self, s_wk): # s_wk is similar workload with target workload
         self.s_wk = s_wk
