@@ -88,7 +88,7 @@ def main():
     knobs.scale_data()
     logger.info("## Train Knob2Vec for similar workload ##")
     # if there is pre-trained model results, just load numpy file or train model and get table results
-    LOOKUPTABLE_PATH = os.path.join('data/lookuptable', str(knobs.s_wk), 'LookupTable.npy')
+    LOOKUPTABLE_PATH = os.path.join('data/lookuptable', str(knobs.s_wk), f'{opt.sample_size}_LookupTable.npy')
     if os.path.exists(LOOKUPTABLE_PATH):
         logger.info("lookup table file is already existed. Load the file")
         knobs.set_lookuptable(np.load(LOOKUPTABLE_PATH))
@@ -153,9 +153,12 @@ def main():
     if opt.step:
         for s_cmd in step_recommend_command:
             exec_benchmark(s_cmd, opt)
-        pd_steps = pd.read_csv('steps_fitness.csv', index_col=0)
+        file_name = f'{opt.sample_size}_steps_fitness.csv'
+        if os.path.isfile(file_name) is False:
+            pd.DataFrame(data=range(1,101), columns=['idx']).to_csv(file_name, index=False)
+        pd_steps = pd.read_csv(file_name, index_col=0)
         pd_steps[f'{opt.target}_{opt.mode}'] = step_best_fitness
-        pd_steps.to_csv('steps_fitness.csv')
+        pd_steps.to_csv(file_name)
     else:
         ## Execute db_benchmark with recommended commands by transporting to other server
         exec_benchmark(recommend_command, opt)
