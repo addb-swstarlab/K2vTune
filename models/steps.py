@@ -58,7 +58,7 @@ def train_knob2vec(knobs, logger, opt):
     if not os.path.exists(os.path.join(knobs.TABLE_PATH, str(knobs.s_wk))):
         os.mkdir(os.path.join(knobs.TABLE_PATH, str(knobs.s_wk)))
     
-    np.save(os.path.join(knobs.TABLE_PATH, str(knobs.s_wk), 'LookupTable.npy'), table)
+    np.save(os.path.join(knobs.TABLE_PATH, str(knobs.s_wk), f'{opt.sample_size}_LookupTable.npy'), table)
     
     return table
 
@@ -78,8 +78,8 @@ def train_fitness_function(knobs, logger, opt):
         Dataset_K2vec_tr = RocksDBDataset(knobs.knob2vec_tr, knobs.norm_em_tr)
         Dataset_K2vec_te = RocksDBDataset(knobs.knob2vec_te, knobs.norm_em_te)
 
-    loader_K2vec_tr = DataLoader(dataset = Dataset_K2vec_tr, batch_size = 32, shuffle=True)
-    loader_K2vec_te = DataLoader(dataset = Dataset_K2vec_te, batch_size = 32, shuffle=False)
+    loader_K2vec_tr = DataLoader(dataset = Dataset_K2vec_tr, batch_size = opt.batch_size, shuffle=True)
+    loader_K2vec_te = DataLoader(dataset = Dataset_K2vec_te, batch_size = opt.batch_size, shuffle=False)
 
     if opt.mode == 'dnn':
         model = SingleNet(input_dim=torch.reshape(knobs.knob2vec_tr, (knobs.knob2vec_tr.shape[0], -1)).shape[-1], hidden_dim=opt.hidden_size, output_dim=knobs.norm_em_tr.shape[-1]).cuda()
