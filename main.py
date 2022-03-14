@@ -113,7 +113,8 @@ def main():
             logger.info(f'ground truth: {true[i]}\n')
 
         r2_res = r2_score(true, pred, multioutput='raw_values')
-        logger.info(f'average r2 score = {np.average(r2_res):.4f}')
+        r2_res = np.average(r2_res)
+        logger.info(f'average r2 score = {r2_res:.4f}')
         pcc_res = 0
         ci_res = 0
         for idx in range(len(true)):
@@ -121,8 +122,10 @@ def main():
             pcc_res += res
             res = concordance_index(true[idx], pred[idx])
             ci_res += res
-        logger.info(f'average pcc score = {pcc_res/len(true):.4f}')
-        logger.info(f'average ci score = {ci_res/len(true):.4f}')
+        pcc_res = pcc_res/len(true)
+        ci_res = ci_res/len(true)
+        logger.info(f'average pcc score = {pcc_res:.4f}')
+        logger.info(f'average ci score = {ci_res:.4f}')
         
     elif opt.eval:
         logger.info("## Load Trained Fitness Function ##")
@@ -131,7 +134,8 @@ def main():
         true = knobs.em_te.to_numpy()
 
         r2_res = r2_score(true, pred, multioutput='raw_values')
-        logger.info(f'average r2 score = {np.average(r2_res):.4f}')
+        r2_res = np.average(r2_res)
+        logger.info(f'average r2 score = {r2_res:.4f}')
         pcc_res = 0
         ci_res = 0
         for idx in range(len(true)):
@@ -139,11 +143,20 @@ def main():
             pcc_res += res
             res = concordance_index(true[idx], pred[idx])
             ci_res += res
-        logger.info(f'average pcc score = {pcc_res/len(true):.4f}')
-        logger.info(f'average ci score = {ci_res/len(true):.4f}')
+        pcc_res = pcc_res/len(true)
+        ci_res = ci_res/len(true)
+        logger.info(f'average pcc score = {pcc_res:.4f}')
+        logger.info(f'average ci score = {ci_res:.4f}')
         
     else:
         logger.exception("Choose Model mode, '--train' or '--eval'")
+    
+    file_name = f"{opt.sample_size}_prediction_score.csv"
+    if os.path.isfile(file_name) is False:
+        pd.DataFrame(data=['r2', 'pcc', 'ci'], columns=['score']).to_csv(file_name, index=False)
+    pred_score = pd.read_csv(file_name, index_col=0)
+    pred_score[f'{opt.target}_{opt.mode}'] = [r2_res, pcc_res, ci_res]
+    pred_score.to_csv(file_name)
     
     recommend_command, step_recommend_command, step_best_fitness = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
 
