@@ -48,7 +48,7 @@ class Knob:
         self.X_te = torch.Tensor(self.X_te).cuda()
 
     def scale_data(self):
-        self.scaler_im = MinMaxScaler().fit(self.im_tr)
+        self.scaler_im = MinMaxScaler().fit(self.im_tr) # [0, 1]
         self.scaler_em = MinMaxScaler().fit(self.em_tr)
         self.scaler_k = MinMaxScaler().fit(self.knob_tr)
 
