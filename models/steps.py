@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import torch
 from torch.utils.data import DataLoader
-from models.network import RocksDBDataset, SingleNet, GRUNet, EncoderRNN, DecoderRNN, AttnDecoderRNN, Attention
+from models.network import RocksDBDataset, SingleNet, GRUNet, EncoderRNN, DecoderRNN, Attention#, AttnDecoderRNN
 from models.train import train, valid
 from models.utils import get_filename
 import models.rocksdb_option as option
@@ -86,12 +86,14 @@ def train_fitness_function(knobs, logger, opt):
     elif opt.mode == 'gru':
         encoder = EncoderRNN(input_dim=knobs.knob2vec_tr.shape[-1], hidden_dim=opt.hidden_size)
         decoder = DecoderRNN(input_dim=1, hidden_dim=opt.hidden_size, output_dim=1)
-        model = GRUNet(encoder=encoder, decoder=decoder, tf=opt.tf, batch_size=opt.batch_size).cuda()
+        model = GRUNet(encoder=encoder, decoder=decoder, tf=opt.tf, batch_size=opt.batch_size, hidden_size=opt.hidden_size).cuda()
     elif opt.mode == 'attngru':
-        attn = Attention(batch_size=opt.batch_size, hidden_size=opt.hidden_size, method=opt.attn_mode, mlp=False)
+        # attn = Attention(batch_size=opt.batch_size, hidden_size=opt.hidden_size, method=opt.attn_mode, mlp=False)
+        attn = Attention(opt.hidden_size)
         encoder = EncoderRNN(input_dim=knobs.knob2vec_tr.shape[-1], hidden_dim=opt.hidden_size)
-        decoder = AttnDecoderRNN(input_dim=1, hidden_dim=opt.hidden_size, output_dim=1, attn=attn)
-        model = GRUNet(encoder=encoder, decoder=decoder, tf=opt.tf, batch_size=opt.batch_size).cuda()
+        # decoder = AttnDecoderRNN(input_dim=1, hidden_dim=opt.hidden_size, output_dim=1, attn=attn)
+        decoder = DecoderRNN(input_dim=1, hidden_dim=opt.hidden_size, output_dim=1)
+        model = GRUNet(encoder=encoder, decoder=decoder, tf=opt.tf, batch_size=opt.batch_size, attention=attn, hidden_size=opt.hidden_size).cuda()
     elif opt.mode == 'raw':
         model = SingleNet(input_dim=knobs.norm_k_tr.shape[1], hidden_dim=16, output_dim=knobs.norm_em_tr.shape[-1]).cuda()
 

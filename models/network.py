@@ -1,3 +1,4 @@
+from this import d
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
@@ -29,7 +30,7 @@ class SingleNet(nn.Module):
         self.x_kb = self.knob_fc(x)
 #         self.h = self.hidden(self.x_kb)
         self.x_im = self.im_fc(self.x_kb)
-        return self.x_im, None
+        return self.x_im, None # matching format
 
 class EncoderRNN(nn.Module):
     def __init__(self, input_dim, hidden_dim):
@@ -51,160 +52,85 @@ class DecoderRNN(nn.Module):
         self.hidden_dim = hidden_dim # 64
         self.output_dim = output_dim # 1
 
-        self.emb = nn.Linear(self.input_dim, self.hidden_dim)
+        # self.emb = nn.Linear(self.input_dim, self.hidden_dim)
         self.gru = nn.GRU(self.hidden_dim, self.hidden_dim, batch_first=True)
-        self.fc = nn.Linear(self.hidden_dim, self.output_dim)
+        # self.fc = nn.Linear(self.hidden_dim, self.output_dim)
 
-    def forward(self, x, h, eo):
-        x = self.emb(x)
+    def forward(self, x, h):
+         # x = self.emb(x)
         outputs, hidden = self.gru(x, h)
-        outputs = self.fc(outputs)
-        return outputs, hidden, None
-
-class AttnDecoderRNN(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, attn):
-        super(AttnDecoderRNN, self).__init__()
-        self.input_dim = input_dim # 1
-        self.hidden_dim = hidden_dim # 64
-        self.output_dim = output_dim # 1        
-
-        self.emb = nn.Linear(self.input_dim, self.hidden_dim) # TODO: REMOVE
-        self.gru = nn.GRU(self.hidden_dim, self.hidden_dim, batch_first=True)
-        self.fc = nn.Linear(self.hidden_dim, self.output_dim)
-
-        self.attention = attn
-
-    def forward(self, x, h, eo):
-        # # x = (32, 1, 64) = (batch, trg_len, hidden)
-        # # h = (1, 32, 64) = (layer, batch, hidden)
-        # x = self.emb(x)
-        # attn_weights = F.softmax(self.attn(torch.cat((x[:,0], h[0]),1)), dim=1) # (32, 64) cat (32, 64) = (32, 128) => (32, 22)
-        # # print(attn_weights.shape, eo.shape) # (32, 22) (32, 22, 64) 
-        # # attn_weights.unsqueeze(1) MAKES (32, 22) => (32, 1, 22)
-        # attn_applied = torch.bmm(attn_weights.unsqueeze(1), eo) # (32, 1, 22) * (32, 22, 64) = (32, 1, 64)
-        
-        # outputs = torch.cat((x[:, 0], attn_applied[:, 0]), 1) # (32, 64) (32, 64) => (32, 128)
-        # outputs = self.attn_combine(outputs).unsqueeze(0) # (32, 128) => (32, 64) => (1, 32, 64)
-
-        # outputs = F.relu(outputs)
-        # outputs = outputs.permute(1, 0, 2) # (1, 32, 64) -> (32, 1, 64) (batch, len, hidden)
-        # outputs, hidden = self.gru(outputs, h)
         # outputs = self.fc(outputs)
-
-        ### new code ###
-        # eo = (32, 22, 128)
-        embedded = self.emb(x) # (32, 1, 128)
-        if len(embedded.shape) == 2:
-            embedded = embedded.unsqueeze(1)
-        gru_outputs, hidden = self.gru(embedded, h)
-        gru_outputs = gru_outputs.squeeze(1) # (32, 128)
-
-        attn_weights = self.attention(gru_outputs, eo, 1)
-
-        contexts = attn_weights.unsqueeze(1).bmm(eo).squeeze(1) # (32, 1, ??) * (32, 22, 128)
-
-        outputs = self.fc(contexts)
-
-        return outputs, hidden, attn_weights
+        return outputs, hidden
 
 class Attention(nn.Module):
-    """
-    https://towardsdatascience.com/attention-seq2seq-with-pytorch-learning-to-invert-a-sequence-34faf4133e53
-    Inputs:
-        last_hidden: (batch_size, hidden_size)
-        encoder_outputs: (batch_size, max_time, hidden_size)
-    Returns:
-        attention_weights: (batch_size, max_time)
-    """
-    def __init__(self, batch_size, hidden_size, method="dot", mlp=False):
+    def __init__(self, hidden_size):
         super(Attention, self).__init__()
-        self.method = method
-        self.hidden_size = hidden_size
-        if method == 'dot': # Luong
-            print('attnetion is dot')
-            pass
-        elif method == 'general': # Luong
-            self.Wa = nn.Linear(hidden_size, hidden_size, bias=False)
-            print('attnetion is general')
-        elif method == "concat": # Luong
-            self.Wa = nn.Linear(hidden_size*2, hidden_size, bias=False)
-            self.va = nn.Parameter(torch.FloatTensor(batch_size, hidden_size))
-            print('attnetion is concat')
-        elif method == 'bahdanau': # bahdanau
-            self.Wa = nn.Linear(hidden_size, hidden_size, bias=False)
-            self.Ua = nn.Linear(hidden_size, hidden_size, bias=False)
-            self.va = nn.Parameter(torch.FloatTensor(batch_size, hidden_size))
-            print('attnetion is bahdanau')
-        else:
-            raise NotImplementedError
-
-
-    def forward(self, last_hidden, encoder_outputs, seq_len=None):
-        batch_size, seq_lens, _ = encoder_outputs.size()
-        attention_energies = self._score(last_hidden, encoder_outputs, self.method)
-        return F.softmax(attention_energies, -1)
-
-    def _score(self, last_hidden, encoder_outputs, method):
-        """
-        Computes an attention score
-        :param last_hidden: (batch_size, hidden_dim) => (32, 128)
-        :param encoder_outputs: (batch_size, max_time, hidden_dim) => (32, 22, 128)
-        :param method: str (`dot`, `general`, `concat`, `bahdanau`)
-        :return: a score (batch_size, max_time)
-        """
-
-        assert encoder_outputs.size()[-1] == self.hidden_size
-
-        if method == 'dot':
-            last_hidden = last_hidden.unsqueeze(-1) # (32, 128, 1)
-            return encoder_outputs.bmm(last_hidden).squeeze(-1) # (32, 22, 128) * (32, 128, 1) => (32, 22, 1) => (32, 22)
-
-        elif method == 'general':
-            x = self.Wa(last_hidden) # (32, 128) => (32, 128)
-            x = x.unsqueeze(-1) # (32, 128, 1)
-            return encoder_outputs.bmm(x).squeeze(-1) # (32, 22, 128)*(32, 128, 1) => (32, 22, 1) => (32, 22)
-
-        elif method == "concat":
-            x = last_hidden.unsqueeze(1) # (32, 1, 128)
-            x = x.repeat(1, 22, 1) # (32, 22, 128)            
-            x = torch.tanh(self.Wa(torch.cat((x, encoder_outputs), 2))) # (32, 22, 128) (32, 22, 128) => (32, 22, 256) => (32, 22, "128")
-            return x.bmm(self.va.unsqueeze(2)).squeeze(-1) # (32, 22, 128) * (32, 128, 1) => (32, 22 ,1) => (32, 22)
-
-        elif method == "bahdanau":
-            x = last_hidden.unsqueeze(1) # (32, 1, 128)
-            x = x.repeat(1, 22, 1) # (32, 22, 128)
-            out = torch.relu(self.Wa(x) + self.Ua(encoder_outputs)) # (32, 22, "128") + (32, 22, "128") => (32, 22, 128)
-            return out.bmm(self.va.unsqueeze(2)).squeeze(-1) # (32, 22, 128) * (32, 128, 1) => (32, 22, 1) => (32, 22)
-
-        else:
-            raise NotImplementedError
+        self.linear = nn.Linear(hidden_size, hidden_size, bias=False)
+        self.softmax = nn.Softmax(dim=-1)
+        
+    def forward(self, enc_output, dec_output):
+        # enc_ouptut : (batch, length, hidden_size) | dec_output : (batch, 1, hidden_size)
+        query = self.linear(dec_output.squeeze(1)).unsqueeze(-1) # (batch, hidden_size, 1)
+        
+        weight = torch.bmm(enc_output, query).squeeze(-1) # (batch, length)
+        
+        self.weight = self.softmax(weight)
+        
+        context_vector = torch.bmm(weight.unsqueeze(1), enc_output) # (batch, 1, hidden_size)
+        
+        return context_vector
 
 class GRUNet(nn.Module):
-    def __init__(self, encoder, decoder, tf, batch_size):
+    def __init__(self, encoder, decoder, tf, batch_size, attention=None, hidden_size=None):
         super(GRUNet, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.tf = tf # teacher forcing
         self.batch_size = batch_size
         self.trg_len = 4
-
+        self.emb_trg = nn.Linear(1, hidden_size)
+        self.fc = nn.Linear(hidden_size, 1)
+        self.attention = attention
+        
+        if self.attention is not None:    
+            self.concat = nn.Linear(hidden_size*2, hidden_size)
+            self.relu = nn.ReLU()
+            
     def forward(self, x, trg=None):
         if trg is not None:
             self.trg_len = trg.shape[-1] # 4
         self.encoder_outputs, self.encoder_hidden  = self.encoder(x)
         self.decoder_hidden = self.encoder_hidden
-        self.decoder_input = torch.zeros((self.batch_size, 1, 1)).cuda()
+        self.bos = torch.zeros((self.batch_size, 1, 1)).cuda()
         self.outputs = torch.zeros(self.batch_size, self.trg_len).cuda()
+        if self.tf:
+            self.bos_trg = torch.cat((self.bos, trg.unsqueeze(-1)), dim=1) # (batch, trg_len + 1, 1)
+            self.embed_trg = self.emb_trg(self.bos_trg) # (batch, trg_len+1 or len, hidden_size)
+        else: # for inference
+            # self.bos = torch.zeros((self.batch_size, self.trg_len + 1, 1)).cuda() ## ADD
+            # self.embed_trg = self.emb_trg(self.bos) ## ADD
+            self.decoder_input = self.emb_trg(self.bos)
+        
         self.attn_weights = torch.Tensor().cuda()
 
         for di in range(self.trg_len):
-            self.decoder_output, self.decoder_hidden, self.attn_weight = self.decoder(self.decoder_input, self.decoder_hidden, self.encoder_outputs)
-            self.outputs[:,di] = self.decoder_output.squeeze()
             if self.tf:
-                self.decoder_input = trg[:,di].view(-1, 1, 1)
-            else:
-                self.decoder_input = self.decoder_output
-            if self.attn_weight is not None: # if using attention
-                self.attn_weights = torch.cat((self.attn_weights, self.attn_weight.unsqueeze(-1)), dim=2)
-
+                self.decoder_input = self.embed_trg[:, di, :].unsqueeze(1) # (batch, 1, hidden_size)
+            # self.decoder_input = self.embed_trg[:, di, :].unsqueeze(1) ## ADD
+            self.decoder_output, self.decoder_hidden = self.decoder(self.decoder_input, self.decoder_hidden)
+            
+            if self.attention is not None:
+                self.context_vector = self.attention(self.encoder_outputs, self.decoder_output)
+                self.decoder_output = self.relu(self.concat(torch.cat((self.decoder_output, self.context_vector), dim=-1)))
+                self.attn_weights = torch.cat((self.attn_weights, self.attention.weight.unsqueeze(-1)), dim=-1)
+            
+            self.decoder_output = self.fc(self.decoder_output) # (batch, 1, 1)
+            self.outputs[:,di] = self.decoder_output.squeeze()
+            
+            if not self.tf:
+                self.decoder_input = self.emb_trg(self.decoder_output)
+                # self.bos[:, di+1, :] = self.decoder_output.squeeze(-1) ## ADD
+                # self.embed_trg = self.emb_trg(self.bos) ## ADD
+                
+ 
         return self.outputs, self.attn_weights
