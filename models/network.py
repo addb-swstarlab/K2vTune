@@ -111,7 +111,7 @@ class Attention(nn.Module):
     """
     https://towardsdatascience.com/attention-seq2seq-with-pytorch-learning-to-invert-a-sequence-34faf4133e53
     Inputs:
-        last_hidden: (batch_size, hidden_size)
+        last_hidden: (batch_size, hidden_size) == decoder_output
         encoder_outputs: (batch_size, max_time, hidden_size)
     Returns:
         attention_weights: (batch_size, max_time)
