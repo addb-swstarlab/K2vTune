@@ -110,11 +110,12 @@ def train_fitness_function(knobs, logger, opt):
             if best_loss > loss_te and epoch>15:
                 best_loss = loss_te
                 best_model = model
+                best_outputs = outputs
                 torch.save(best_model, os.path.join('model_save', name))
         logger.info(f"loss is {best_loss:.4f}, save model to {os.path.join('model_save', name)}")
         
 
-        return best_model, outputs
+        return best_model, best_outputs
     elif opt.eval:
         logger.info(f"[Eval MODE] Trained Model Loading with path: {opt.model_path}")
         model = torch.load(os.path.join('model_save',opt.model_path))
