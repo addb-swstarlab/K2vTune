@@ -111,45 +111,38 @@ def main():
         for i in range(10):
             logger.info(f'predict rslt: {pred[i]}')
             logger.info(f'ground truth: {true[i]}\n')
-
-        r2_res = r2_score(true, pred, multioutput='raw_values')
-        r2_res = np.average(r2_res)
-        logger.info(f'average r2 score = {r2_res:.4f}')
-        pcc_res = 0
-        ci_res = 0
-        for idx in range(len(true)):
-            res, _ = pearsonr(true[idx], pred[idx])
-            pcc_res += res
-            res = concordance_index(true[idx], pred[idx])
-            ci_res += res
-        pcc_res = pcc_res/len(true)
-        ci_res = ci_res/len(true)
-        logger.info(f'average pcc score = {pcc_res:.4f}')
-        logger.info(f'average ci score = {ci_res:.4f}')
-        
+    
     elif opt.eval:
         logger.info("## Load Trained Fitness Function ##")
         fitness_function, outputs = train_fitness_function(knobs=knobs, logger=logger, opt=opt)
         pred = np.round(knobs.scaler_em.inverse_transform(outputs.cpu().detach().numpy()), 2)
         true = knobs.em_te.to_numpy()
-
-        r2_res = r2_score(true, pred, multioutput='raw_values')
-        r2_res = np.average(r2_res)
-        logger.info(f'average r2 score = {r2_res:.4f}')
-        pcc_res = 0
-        ci_res = 0
-        for idx in range(len(true)):
-            res, _ = pearsonr(true[idx], pred[idx])
-            pcc_res += res
-            res = concordance_index(true[idx], pred[idx])
-            ci_res += res
-        pcc_res = pcc_res/len(true)
-        ci_res = ci_res/len(true)
-        logger.info(f'average pcc score = {pcc_res:.4f}')
-        logger.info(f'average ci score = {ci_res:.4f}')
         
     else:
-        logger.exception("Choose Model mode, '--train' or '--eval'")
+        logger.exception("Choose Model mode, '--train' or '--eval'")      
+
+    r2_res = r2_score(true, pred, multioutput='raw_values')
+    logger.info('[R2 SCORE]')
+    logger.info(f'TIME:{r2_res[0]:.4f}, RATE:{r2_res[1]:.4f}, WAF:{r2_res[2]:.4f}, SA:{r2_res[3]:.4f}')
+    r2_res = np.average(r2_res)
+    logger.info(f'average r2 score = {r2_res:.4f}')
+    pcc_res = np.zeros(4)
+    ci_res = np.zeros(4)
+    for idx in range(4):
+        res, _ = pearsonr(true[:,idx], pred[:,idx])  
+        pcc_res[idx] = res
+        res = concordance_index(true[:,idx], pred[:,idx])
+        ci_res[idx] = res
+    # pcc_res = pcc_res/len(true)
+    # ci_res = ci_res/len(true)
+    logger.info('[PCC SCORE]')
+    logger.info(f'TIME:{pcc_res[0]:.4f}, RATE:{pcc_res[1]:.4f}, WAF:{pcc_res[2]:.4f}, SA:{pcc_res[3]:.4f}')
+    logger.info(f'average pcc score = {np.average(pcc_res):.4f}')
+    logger.info('[CI SCORE]')
+    logger.info(f'TIME:{ci_res[0]:.4f}, RATE:{ci_res[1]:.4f}, WAF:{ci_res[2]:.4f}, SA:{ci_res[3]:.4f}')
+    logger.info(f'average ci score = {np.average(ci_res):.4f}')
+        
+
     
     file_name = f"{opt.sample_size}_prediction_score.csv"
     if os.path.isfile(file_name) is False:
