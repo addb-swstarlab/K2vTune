@@ -39,13 +39,9 @@ def get_knob2vec(data, table):
         k2vec[i] = table[idx]
     return k2vec
 
-def draw_attention(config, target, similar_wk, model_path, save_path=None):
-    hidden_size = 128
+def draw_attention(config, similar_wk, model_path, color, title, save_path=None):
     batch_size = 32
     KNOB_PATH = '../data/rocksdb_conf'
-    EXTERNAL_PATH = '../data/external'
-    INTERNAL_PATH = '../data/internal'
-    WK_NUM = 16
     compression_type = {'snappy':0, 'zlib':1, 'lz4':2, 'none':3}
     splt_config = config.split(' ')
     column = []
@@ -63,61 +59,47 @@ def draw_attention(config, target, similar_wk, model_path, save_path=None):
     
     raw_knobs = rocksdb_knobs_make_dict(KNOB_PATH)
     raw_knobs = pd.DataFrame(data=raw_knobs['data'].astype(np.float32), columns=raw_knobs['columnlabels'])
-
-    internal_dict = {}
-    external_dict = {}
-
-    pruned_im = pd.read_csv(os.path.join(INTERNAL_PATH, 'internal_ensemble_pruned_tmp.csv'), index_col=0)
-    for wk in range(WK_NUM):
-        im = pd.read_csv(os.path.join(INTERNAL_PATH, f'internal_results_{wk}.csv'), index_col=0)
-        internal_dict[wk] = im[pruned_im.columns]
-    if target > 15:
-        im = pd.read_csv(f'../data/target_workload/{target}/internal_results_11.csv', index_col=0)
-        internal_dict[wk+1] = im[pruned_im.columns]
-
-    for wk in range(WK_NUM):
-        ex = pd.read_csv(os.path.join(EXTERNAL_PATH, f'external_results_{wk}.csv'), index_col=0)
-        external_dict[wk] = ex
-    if target > 15:
-        ex = pd.read_csv(f'../data/target_workload/{target}/external_results_11.csv', index_col=0)
-        external_dict[wk+1] = ex
-        
-    em_tr, em_te = train_test_split(external_dict[similar_wk], test_size=0.2, random_state=22)
-    scaler_em = StandardScaler().fit(em_tr)
     
-    index_value = get_index_value(raw_knobs)
-    conf_one_hot = make_knobsOneHot(index_value, config, raw_knobs)
-    table = np.load(f'../data/lookuptable/{similar_wk}/LookupTable.npy')
+    external_columns = ['TIME', 'RATE', 'WAF', 'SA']
+    # index_value = get_index_value(raw_knobs)
+    # # conf_one_hot = make_knobsOneHot(index_value, config, raw_knobs)
+    conf_one_hot = np.load("../data/knobsOneHot.npy")
+    table = np.load(f'../data/lookuptable/{similar_wk}/20000_LookupTable.npy')
     conf_knob2vec = get_knob2vec(torch.Tensor(conf_one_hot), table)
     conf_knob2vec = torch.Tensor(conf_knob2vec).cuda()
-    
+    _, k2v_te = train_test_split(conf_knob2vec, test_size=0.2, random_state=22)
+    idx = np.random.randint(0, k2v_te.shape[0], batch_size)
+    k2v_te = k2v_te[idx]
     model = torch.load(f'../model_save/{model_path}')
     model.tf = False
     model.batch_size = batch_size
+
+    # output, attn_w_ = model(conf_knob2vec.repeat(32, 1, 1))
+    output, attn_w = model(k2v_te)
     
-    output, attn_w_ = model(conf_knob2vec.repeat(32, 1, 1))
-    
-    attn_w = attn_w_.cpu().detach().numpy()
+    attn_w = attn_w.cpu().detach().numpy()
     attn_w = np.average(attn_w, axis=0)
     
     fig = plt.figure(figsize=(10, 10))
     ax = plt.gca()
 
-    im = ax.matshow(attn_w, interpolation='none')
+    im = ax.matshow(attn_w, interpolation='none', cmap=color)
     fig.colorbar(im)
 
     fontdict = {'fontsize': 14}
 
     ax.set_xticks(np.arange(4))
-    ax.set_xticklabels(external_dict[0].columns, fontdict=fontdict, rotation=90)
+    ax.set_xticklabels(external_columns, fontdict=fontdict, rotation=90)
     ax.set_yticks(np.arange(22))
     ax.set_yticklabels(raw_knobs.columns, fontdict=fontdict)
+    fontdict = {'fontname': 'Times New Roman', 'fontsize':30, 'fontweight':'bold'}
+    ax.set_title(title, fontdict=fontdict, y=-0.075)
 
     ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
     if save_path is not None:
-        plt.savefig(save_path)
+        plt.savefig(save_path, bbox_inches='tight', dpi=1200)
     
     plt.show()
 
