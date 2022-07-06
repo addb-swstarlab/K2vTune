@@ -1,3 +1,4 @@
+from unicodedata import bidirectional
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
@@ -32,12 +33,17 @@ class SingleNet(nn.Module):
         return self.x_im, None
 
 class EncoderRNN(nn.Module):
-    def __init__(self, input_dim, hidden_dim):
+    def __init__(self, input_dim, hidden_dim, bidirect):
         super(EncoderRNN, self).__init__()
         self.input_dim = input_dim # 1024
         self.hidden_dim = hidden_dim # 64
+        self.bidirect = bidirect
+
         self.linear = nn.Linear(self.input_dim, self.hidden_dim)
-        self.gru = nn.GRU(self.hidden_dim, self.hidden_dim, batch_first=True)
+        if self.bidirect:
+            self.gru = nn.GRU(self.hidden_dim, self.hidden_dim // 2, batch_first=True, bidirectional=bidirect)
+        else:
+            self.gru = nn.GRU(self.hidden_dim, self.hidden_dim, batch_first=True)
     
     def forward(self, x): # x = (batch, seq_len, input_dim)
         x = self.linear(x)
@@ -45,31 +51,40 @@ class EncoderRNN(nn.Module):
         return outputs, hidden
 
 class DecoderRNN(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim):
+    def __init__(self, input_dim, hidden_dim, output_dim, bidirect):
         super(DecoderRNN, self).__init__()
         self.input_dim = input_dim # 1
         self.hidden_dim = hidden_dim # 64
         self.output_dim = output_dim # 1
+        self.bidirect = bidirect
 
         self.emb = nn.Linear(self.input_dim, self.hidden_dim)
-        self.gru = nn.GRU(self.hidden_dim, self.hidden_dim, batch_first=True)
+        if self.bidirect:
+            self.gru = nn.GRU(self.hidden_dim, self.hidden_dim // 2, batch_first=True, bidirectional=bidirect)
+        else:
+            self.gru = nn.GRU(self.hidden_dim, self.hidden_dim, batch_first=True)
         self.fc = nn.Linear(self.hidden_dim, self.output_dim)
 
     def forward(self, x, h, eo):
         x = self.emb(x)
         outputs, hidden = self.gru(x, h)
+        print(outputs.shape, hidden.shape)
         outputs = self.fc(outputs)
         return outputs, hidden, None
 
 class AttnDecoderRNN(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, attn):
+    def __init__(self, input_dim, hidden_dim, output_dim, attn, bidirect):
         super(AttnDecoderRNN, self).__init__()
         self.input_dim = input_dim # 1
         self.hidden_dim = hidden_dim # 64
         self.output_dim = output_dim # 1        
-
+        self.bidirect = bidirect
+        
         self.emb = nn.Linear(self.input_dim, self.hidden_dim) # TODO: REMOVE
-        self.gru = nn.GRU(self.hidden_dim, self.hidden_dim, batch_first=True)
+        if self.bidirect:
+            self.gru = nn.GRU(self.hidden_dim, self.hidden_dim // 2, batch_first=True, bidirectional=bidirect)
+        else:
+            self.gru = nn.GRU(self.hidden_dim, self.hidden_dim, batch_first=True)
         self.fc = nn.Linear(self.hidden_dim, self.output_dim)
 
         self.attention = attn
