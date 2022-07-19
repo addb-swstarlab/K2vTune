@@ -68,7 +68,6 @@ class DecoderRNN(nn.Module):
     def forward(self, x, h, eo):
         x = self.emb(x)
         outputs, hidden = self.gru(x, h)
-        print(outputs.shape, hidden.shape)
         outputs = self.fc(outputs)
         return outputs, hidden, None
 
