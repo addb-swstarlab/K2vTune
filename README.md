@@ -2,8 +2,8 @@
 We propose the methods to convert scalar knobs to vector representation
 
 ## Requirements
-lifelines
-pytorch == 1.7.0
+- lifelines
+- pytorch == 1.7.0
 
 ## TRAIN
 ### Run main.py to train the entire model. Paser explanation as below,
