@@ -84,13 +84,13 @@ def train_fitness_function(knobs, logger, opt):
     if opt.mode == 'dnn':
         model = SingleNet(input_dim=torch.reshape(knobs.knob2vec_tr, (knobs.knob2vec_tr.shape[0], -1)).shape[-1], hidden_dim=opt.hidden_size, output_dim=knobs.norm_em_tr.shape[-1]).cuda()
     elif opt.mode == 'gru':
-        encoder = EncoderRNN(input_dim=knobs.knob2vec_tr.shape[-1], hidden_dim=opt.hidden_size)
-        decoder = DecoderRNN(input_dim=1, hidden_dim=opt.hidden_size, output_dim=1)
+        encoder = EncoderRNN(input_dim=knobs.knob2vec_tr.shape[-1], hidden_dim=opt.hidden_size, bidirect=opt.bidirect)
+        decoder = DecoderRNN(input_dim=1, hidden_dim=opt.hidden_size, output_dim=1, bidirect=opt.bidirect)
         model = GRUNet(encoder=encoder, decoder=decoder, tf=opt.tf, batch_size=opt.batch_size).cuda()
     elif opt.mode == 'attngru':
         attn = Attention(batch_size=opt.batch_size, hidden_size=opt.hidden_size, method=opt.attn_mode, mlp=False)
-        encoder = EncoderRNN(input_dim=knobs.knob2vec_tr.shape[-1], hidden_dim=opt.hidden_size)
-        decoder = AttnDecoderRNN(input_dim=1, hidden_dim=opt.hidden_size, output_dim=1, attn=attn)
+        encoder = EncoderRNN(input_dim=knobs.knob2vec_tr.shape[-1], hidden_dim=opt.hidden_size, bidirect=opt.bidirect)
+        decoder = AttnDecoderRNN(input_dim=1, hidden_dim=opt.hidden_size, output_dim=1, attn=attn, bidirect=opt.bidirect)
         model = GRUNet(encoder=encoder, decoder=decoder, tf=opt.tf, batch_size=opt.batch_size).cuda()
     elif opt.mode == 'raw':
         model = SingleNet(input_dim=knobs.norm_k_tr.shape[1], hidden_dim=16, output_dim=knobs.norm_em_tr.shape[-1]).cuda()
