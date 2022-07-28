@@ -32,11 +32,16 @@ parser.add_argument('--ex_weight', type=float, action='append', help='Define ext
 parser.add_argument('--save', action='store_true', help='Choose save the score on csv file or just show')
 parser.add_argument('--step', action='store_true', help='If want to see stepped results, trigger this')
 parser.add_argument('--sample_size', type=int, default=20000, help='Define train sample size, max is 20000')
+parser.add_argument('--bidirect', action='store_true', help='Choose whether applying bidirectional GRU')
 
 opt = parser.parse_args()
 
 if not os.path.exists('logs'):
     os.mkdir('logs')
+
+if not os.path.exists('model_save'):
+    os.mkdir('model_save')
+
 
 logger, log_dir = get_logger(os.path.join('./logs'))
 
@@ -155,7 +160,7 @@ def main():
 
     logger.info("## Train/Load Fitness Function DONE ##")
     logger.info("## Configuration Recommendation DONE ##")
-  
+    
     if opt.step:
         for s_cmd in step_recommend_command:
             exec_benchmark(s_cmd, opt)
