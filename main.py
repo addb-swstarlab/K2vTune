@@ -9,6 +9,7 @@ from sklearn.metrics import r2_score
 from scipy.stats import pearsonr
 from lifelines.utils import concordance_index
 from benchmark import exec_benchmark
+from datetime import datetime
 
 os.system('clear')
 
@@ -138,22 +139,25 @@ def main():
         pcc_res[idx] = res
         res = concordance_index(true[:,idx], pred[:,idx])
         ci_res[idx] = res
-    # pcc_res = pcc_res/len(true)
-    # ci_res = ci_res/len(true)
+    pcc_res = pcc_res/len(true)
+    ci_res = ci_res/len(true)
     logger.info('[PCC SCORE]')
-    logger.info(f'TIME:{pcc_res[0]:.4f}, RATE:{pcc_res[1]:.4f}, WAF:{pcc_res[2]:.4f}, SA:{pcc_res[3]:.4f}')
+    # logger.info(f'TIME:{pcc_res[0]:.4f}, RATE:{pcc_res[1]:.4f}, WAF:{pcc_res[2]:.4f}, SA:{pcc_res[3]:.4f}')
     logger.info(f'average pcc score = {np.average(pcc_res):.4f}')
     logger.info('[CI SCORE]')
-    logger.info(f'TIME:{ci_res[0]:.4f}, RATE:{ci_res[1]:.4f}, WAF:{ci_res[2]:.4f}, SA:{ci_res[3]:.4f}')
+    # logger.info(f'TIME:{ci_res[0]:.4f}, RATE:{ci_res[1]:.4f}, WAF:{ci_res[2]:.4f}, SA:{ci_res[3]:.4f}')
     logger.info(f'average ci score = {np.average(ci_res):.4f}')
         
 
     
-    file_name = f"{opt.sample_size}_prediction_score.csv"
+    file_name = f"{datetime.today().strftime('%Y%m%d')}_{opt.sample_size}_prediction_score.csv"
     if os.path.isfile(file_name) is False:
         pd.DataFrame(data=['r2', 'pcc', 'ci'], columns=['score']).to_csv(file_name, index=False)
     pred_score = pd.read_csv(file_name, index_col=0)
-    pred_score[f'{opt.target}_{opt.mode}'] = [r2_res, pcc_res, ci_res]
+    if opt.bidirect:
+        pred_score[f'{opt.target}_bi{opt.mode}'] = [r2_res, pcc_res, ci_res]
+    else:
+        pred_score[f'{opt.target}_{opt.mode}'] = [r2_res, pcc_res, ci_res]
     pred_score.to_csv(file_name)
     
     recommend_command, step_recommend_command, step_best_fitness = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
@@ -164,11 +168,14 @@ def main():
     if opt.step:
         for s_cmd in step_recommend_command:
             exec_benchmark(s_cmd, opt)
-        file_name = f'{opt.sample_size}_steps_fitness.csv'
+        file_name = f"{datetime.today().strftime('%Y%m%d')}_{opt.sample_size}_steps_fitness.csv"
         if os.path.isfile(file_name) is False:
             pd.DataFrame(data=range(1,101), columns=['idx']).to_csv(file_name, index=False)
         pd_steps = pd.read_csv(file_name, index_col=0)
-        pd_steps[f'{opt.target}_{opt.mode}'] = step_best_fitness
+        if opt.bidirect:
+            pd_steps[f'{opt.target}_bi{opt.mode}'] = step_best_fitness
+        else:
+            pd_steps[f'{opt.target}_{opt.mode}'] = step_best_fitness
         pd_steps.to_csv(file_name)
     else:
         ## Execute db_benchmark with recommended commands by transporting to other server
