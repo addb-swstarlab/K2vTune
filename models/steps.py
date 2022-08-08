@@ -19,14 +19,20 @@ def euclidean_distance(a, b):
 
 def get_euclidean_distance(internal_dict, logger, opt):
     scaler = MinMaxScaler().fit(pd.concat(internal_dict))
-    
-    wk = []
-    for im_d in internal_dict:
-        wk.append(scaler.transform(internal_dict[im_d].iloc[:opt.target_size, :]))
+    target_config_idx = [1004,1214,1312,2465,3306,3333,4569,4801,5124,5389,8490,9131,9143,11896,12065,12293,12491,13098,18088,19052]
     
     trg = opt.target
     if trg > 15:
         trg = 16
+    
+    wk = []
+    # for im_d in internal_dict:
+    #     wk.append(scaler.transform(internal_dict[im_d].iloc[:opt.target_size, :]))
+    for im_d in internal_dict:
+        if im_d == 16:
+            wk.append(scaler.transform(internal_dict[im_d]))
+        else:
+            wk.append(scaler.transform(internal_dict[im_d].iloc[target_config_idx, :]))
 
     big = 100
     for i in range(len(wk)):
