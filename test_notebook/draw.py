@@ -105,3 +105,141 @@ def draw_attention(config, similar_wk, model_path, color, title, save_path=None)
 
     
     return model
+
+def get_max_data(random_data):
+    max_idx = []
+    for i in range(100):
+        idx = random_data['SCORE'][:i+1].argmax()
+        max_idx.append(idx)
+    return random_data.iloc[max_idx]
+
+def get_default(path):
+    def_ex = pd.read_csv(path, index_col=0)
+    def_ex = def_ex.T
+    return def_ex.to_dict()
+
+def get_score(df, wk):
+    def_ex = get_default('data/default_external_metrics.csv')
+    d = def_ex[wk]
+#     if wk == 16:
+#         d = {'TIME':13, 'RATE':23.67, 'WAF':7.9, 'SA':148.21}
+#     elif wk == 17:
+#         d = {'TIME':43, 'RATE':16.71, 'WAF':11.1, 'SA':288.2}
+#     elif wk == 18:
+#         d = {'TIME':69.3, 'RATE':14.8, 'WAF':12.4, 'SA':361.19}
+    
+    df['SCORE'] = (d['TIME']-df['TIME'])/d['TIME'] + (df['RATE']-d['RATE'])/d['RATE'] + \
+(d['WAF']-df['WAF'])/d['WAF'] + (d['SA']-df['SA'])/d['SA']
+    return df
+
+def draw_plot(x, models, wk, s_size):
+#     for m in models['Single'].columns:
+    for m in ['SCORE']:
+        plt.figure(figsize=(12, 4))
+        plt.plot(x, models['Random'][m], marker='_', color='y', label='Random')
+#         plt.plot(x, deft[m], marker='_', color='y', label='default')
+#         plt.plot(x, fb[m], marker='_', color='y', label='facebook')
+#         plt.plot(x, dba[m], marker='_', color='y', label='DBA')
+        plt.plot(x, models['Single'][m], marker='|', color='grey', label='Single')
+        plt.plot(x, models['Single+Knov2vec'][m], marker='x', color='lightcoral', label='Single+K2v')
+        plt.plot(x, models['GRU'][m], marker='*', color='goldenrod', label='GRU')
+        plt.plot(x, models['GRU+Attn'][m], marker='.', color='mediumpurple', label='GRU+Attn')
+        plt.legend(mode="expand", ncol=8, loc="upper center", bbox_to_anchor=(0, 0.95, 1, 0.2))
+#         plt.title(f"workload: {wk} sample size: {s_size} {m}", loc='center')
+        fontdict = {'fontname': 'Times New Roman', 'fontsize':30, 'fontweight':'bold'}
+        plt.xlabel("Optimization steps", fontdict=fontdict)
+        plt.ylabel(m)
+
+def draw_bar(models, wk, s_size):
+    metrics = models['DBA'].columns[1:]
+    metrics = [metrics[:2], metrics[2:-1]]
+    fig, ax = plt.subplots(2, 2, figsize=(15, 8))
+    for i, metric in enumerate(metrics):
+#     for metric in ['SCORE']:
+        for j, m in enumerate(metric):
+            values = []
+            for key in models.keys():
+                values.append(models[key].iloc[-1][m])
+#             ax[i][j].set_figure((8, 4))
+            ax[i][j].grid(axis='y', linestyle='--', which='major', zorder=0)
+            ax[i][j].bar(range(len(values)), values, width=0.6, color='lightsteelblue', zorder=2, edgecolor='black', hatch='--')
+            ax[i][j].set_xticklabels(models.keys())
+            ax[i][j].set_ylabel(m)
+#             ax[i][j].set_title(f"workload: {wk} {m}", loc='center')
+        
+# def wk_draw(wk, s_size, path, plot=False, bar=False):
+# #     types = ['Default', 'Facebook', 'DBA', 'RANDOM', 'SingleNet', 'SingleNet+K2v', 'GRU', 'ATTN']
+#     models = {}
+    
+#     data = pd.read_csv(f'{path}{wk}_{s_size}_step.csv', index_col=0)
+#     if 'date' in data.columns:
+#         data = data.drop(columns=['date'])
+    
+#     random_data = pd.read_csv(f'data/{wk}_random_step.csv')
+#     random_data = random_data.drop(columns=['date'])
+    
+#     def_data = pd.read_csv(f'data/{wk}_default_step.csv').reset_index(drop=True)
+#     fb_data = pd.read_csv(f'data/{wk}_facebook_step.csv').reset_index(drop=True)
+#     dba_data = pd.read_csv(f'data/{wk}_dba_step.csv').reset_index(drop=True)
+    
+#     x = range(100)
+#     raw = data.iloc[:100].reset_index(drop=True)
+#     dnn = data.iloc[100:200].reset_index(drop=True)
+#     gru = data.iloc[200:300].reset_index(drop=True)
+#     attn = data.iloc[300:].reset_index(drop=True)
+    
+#     models['Default'] = get_score(def_data, wk)
+#     rand = get_score(random_data, wk)
+#     models['Random'] = get_max_data(random_data=rand)
+#     models['Facebook'] = get_score(fb_data, wk)
+#     models['DBA'] = get_score(dba_data, wk)    
+#     models['Single'] = get_score(raw, wk)
+#     models['Single+K2v'] = get_score(dnn, wk)
+#     models['GRU'] = get_score(gru, wk)
+#     models['GRU+Attn'] = get_score(attn, wk)
+
+#     if plot:
+#         draw_plot(x, models, wk, s_size)
+#     if bar:
+#         draw_bar(models, wk, s_size)
+        
+def get_data(wk, path):
+#     types = ['Default', 'Facebook', 'DBA', 'RANDOM', 'SingleNet', 'SingleNet+K2v', 'GRU', 'ATTN']
+    models = {}
+    
+    data = pd.read_csv(f'{path}{wk}_step.csv', index_col=0)
+    if 'date' in data.columns:
+        data = data.drop(columns=['date'])
+    
+    random_data = pd.read_csv(f'data/{wk}_random_step.csv')
+    random_data = random_data.drop(columns=['date'])
+    
+    def_data = pd.read_csv(f'data/{wk}_default_step.csv').reset_index(drop=True)
+    fb_data = pd.read_csv(f'data/{wk}_facebook_step.csv').reset_index(drop=True)
+    dba_data = pd.read_csv(f'data/{wk}_dba_step.csv').reset_index(drop=True)
+    cdb_data = get_default('data/cdbtune_res.csv')
+    otter_data = get_default('data/ottertune_res.csv')
+    
+    x = range(100)
+    raw = data.iloc[:100].reset_index(drop=True)
+    dnn = data.iloc[100:200].reset_index(drop=True)
+    gru = data.iloc[200:300].reset_index(drop=True)
+    bigru = data.iloc[300:400].reset_index(drop=True)
+    attn = data.iloc[400:500].reset_index(drop=True)
+    biattn = data.iloc[500:].reset_index(drop=True)
+    
+    models['Default'] = get_score(def_data, wk)
+    rand = get_score(random_data, wk)
+    models['Random'] = rand # get_max_data(random_data=rand)
+    models['Facebook'] = get_score(fb_data, wk)
+    models['DBA'] = get_score(dba_data, wk) 
+    models['CDBTune'] = get_score(cdb_data[wk], wk)
+    models['OtterTune'] = get_score(otter_data[wk], wk)
+    models['Single'] = get_score(raw, wk)
+    models['Single+Knov2vec'] = get_score(dnn, wk)
+    models['GRU'] = get_score(gru, wk)
+    models['BiGRU'] = get_score(bigru, wk)
+    models['GRU+Attn'] = get_score(attn, wk)
+    models['BiGRU+Attn'] = get_score(biattn, wk)
+    
+    return models
