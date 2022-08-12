@@ -217,8 +217,11 @@ def get_data(wk, path):
     def_data = pd.read_csv(f'data/{wk}_default_step.csv').reset_index(drop=True)
     fb_data = pd.read_csv(f'data/{wk}_facebook_step.csv').reset_index(drop=True)
     dba_data = pd.read_csv(f'data/{wk}_dba_step.csv').reset_index(drop=True)
-    cdb_data = get_default('data/cdbtune_res.csv')
-    otter_data = get_default('data/ottertune_res.csv')
+#     cdb_data = get_default('data/cdbtune_res.csv')
+    cdb_data = pd.read_csv('data/cdbtune_res.csv', index_col=0).loc[[wk]]
+#     otter_data = get_default('data/ottertune_res.csv')
+    otter_data = pd.read_csv('data/ottertune_res.csv', index_col=0).loc[[wk]]
+    
     
     x = range(100)
     raw = data.iloc[:100].reset_index(drop=True)
@@ -233,8 +236,8 @@ def get_data(wk, path):
     models['Random'] = rand # get_max_data(random_data=rand)
     models['Facebook'] = get_score(fb_data, wk)
     models['DBA'] = get_score(dba_data, wk) 
-    models['CDBTune'] = get_score(cdb_data[wk], wk)
-    models['OtterTune'] = get_score(otter_data[wk], wk)
+    models['CDBTune'] = get_score(cdb_data, wk)
+    models['OtterTune'] = get_score(otter_data, wk)
     models['Single'] = get_score(raw, wk)
     models['Single+Knov2vec'] = get_score(dnn, wk)
     models['GRU'] = get_score(gru, wk)
