@@ -118,9 +118,9 @@ def get_default(path):
     def_ex = def_ex.T
     return def_ex.to_dict()
 
-def get_score(df, wk):
+def get_score(x, wk):
     def_ex = get_default('data/default_external_metrics.csv')
-    d = def_ex[wk]
+    _def = def_ex[wk]
 #     if wk == 16:
 #         d = {'TIME':13, 'RATE':23.67, 'WAF':7.9, 'SA':148.21}
 #     elif wk == 17:
@@ -128,9 +128,10 @@ def get_score(df, wk):
 #     elif wk == 18:
 #         d = {'TIME':69.3, 'RATE':14.8, 'WAF':12.4, 'SA':361.19}
     
-    df['SCORE'] = (d['TIME']-df['TIME'])/d['TIME'] + (df['RATE']-d['RATE'])/d['RATE'] + \
-(d['WAF']-df['WAF'])/d['WAF'] + (d['SA']-df['SA'])/d['SA']
-    return df
+#     df['SCORE'] = (d['TIME']-df['TIME'])/d['TIME'] + (df['RATE']-d['RATE'])/d['RATE'] + \
+# (d['WAF']-df['WAF'])/d['WAF'] + (d['SA']-df['SA'])/d['SA']
+    x['SCORE'] = np.log(_def['TIME']/x['TIME']) + np.log(x['RATE']/_def['RATE']) + np.log(_def['WAF']/x['WAF']) + np.log(_def['SA']/x['SA'])
+    return x
 
 def draw_plot(x, models, wk, s_size):
 #     for m in models['Single'].columns:
@@ -203,46 +204,64 @@ def draw_bar(models, wk, s_size):
 #     if bar:
 #         draw_bar(models, wk, s_size)
         
-def get_data(wk, path):
+def get_data(wk, path, step=True):
 #     types = ['Default', 'Facebook', 'DBA', 'RANDOM', 'SingleNet', 'SingleNet+K2v', 'GRU', 'ATTN']
     models = {}
     
-    data = pd.read_csv(f'{path}{wk}_step.csv', index_col=0)
+    data = pd.read_csv(os.path.join(path, f'{wk}_step.csv'), index_col=0)
     if 'date' in data.columns:
         data = data.drop(columns=['date'])
     
     random_data = pd.read_csv(f'data/{wk}_random_step.csv')
     random_data = random_data.drop(columns=['date'])
     
-    def_data = pd.read_csv(f'data/{wk}_default_step.csv').reset_index(drop=True)
-    fb_data = pd.read_csv(f'data/{wk}_facebook_step.csv').reset_index(drop=True)
-    dba_data = pd.read_csv(f'data/{wk}_dba_step.csv').reset_index(drop=True)
-#     cdb_data = get_default('data/cdbtune_res.csv')
-    cdb_data = pd.read_csv('data/cdbtune_res.csv', index_col=0).loc[[wk]]
-#     otter_data = get_default('data/ottertune_res.csv')
-    otter_data = pd.read_csv('data/ottertune_res.csv', index_col=0).loc[[wk]]
+    if step:
+        def_data = pd.read_csv(f'data/{wk}_default_step.csv').reset_index(drop=True)
+        fb_data = pd.read_csv(f'data/{wk}_facebook_step.csv').reset_index(drop=True)
+        dba_data = pd.read_csv(f'data/{wk}_dba_step.csv').reset_index(drop=True)
+    #     cdb_data = get_default('data/cdbtune_res.csv')
+        cdb_data = pd.read_csv('data/cdbtune_res.csv', index_col=0).loc[[wk]]
+    #     otter_data = get_default('data/ottertune_res.csv')
+        otter_data = pd.read_csv('data/ottertune_res.csv', index_col=0).loc[[wk]]
+        x = range(100)
+        raw = data.iloc[:100].reset_index(drop=True)
+        dnn = data.iloc[100:200].reset_index(drop=True)
+        gru = data.iloc[200:300].reset_index(drop=True)
+        bigru = data.iloc[300:400].reset_index(drop=True)
+        attn = data.iloc[400:500].reset_index(drop=True)
+        biattn = data.iloc[500:].reset_index(drop=True)
+    else:
+        fb_data = pd.read_csv('data/facebook_res.csv', index_col=0).loc[[wk]]
+        dba_data = pd.read_csv('data/dba_res.csv', index_col=0).loc[[wk]]
+        def_data = pd.read_csv('data/default_external_metrics.csv', index_col=0).loc[[wk]]
+        otter_data = pd.read_csv('data/ottertune_res.csv', index_col=0).loc[[wk]]
+        cdb_data = pd.read_csv('data/cdbtune_res.csv', index_col=0).loc[[wk]]
+        k2v_data = pd.read_csv('data/k2vtune_res.csv', index_col=0).loc[[wk]]
+        pred_data = pd.read_csv('data/220805/predictivemodel_res.csv', index_col=0).loc[[wk]]
+        raw = pred_data[pred_data['model']=='raw'].drop(columns=['model'])
+        dnn = pred_data[pred_data['model']=='dnn'].drop(columns=['model'])
+        gru = pred_data[pred_data['model']=='gru'].drop(columns=['model'])
+        bigru = pred_data[pred_data['model']=='bigru'].drop(columns=['model'])
+        attn = pred_data[pred_data['model']=='attngru'].drop(columns=['model'])
+        biattn = pred_data[pred_data['model']=='attnbigru'].drop(columns=['model'])
     
     
-    x = range(100)
-    raw = data.iloc[:100].reset_index(drop=True)
-    dnn = data.iloc[100:200].reset_index(drop=True)
-    gru = data.iloc[200:300].reset_index(drop=True)
-    bigru = data.iloc[300:400].reset_index(drop=True)
-    attn = data.iloc[400:500].reset_index(drop=True)
-    biattn = data.iloc[500:].reset_index(drop=True)
     
     models['Default'] = get_score(def_data, wk)
     rand = get_score(random_data, wk)
-    models['Random'] = rand # get_max_data(random_data=rand)
+    models['Random'] = get_max_data(random_data=rand)
+#     models['Random'] = rand
     models['Facebook'] = get_score(fb_data, wk)
     models['DBA'] = get_score(dba_data, wk) 
-    models['CDBTune'] = get_score(cdb_data, wk)
     models['OtterTune'] = get_score(otter_data, wk)
+    models['CDBTune'] = get_score(cdb_data, wk)
     models['Single'] = get_score(raw, wk)
-    models['Single+Knov2vec'] = get_score(dnn, wk)
+    models['Single+Knob2vec'] = get_score(dnn, wk)
     models['GRU'] = get_score(gru, wk)
     models['BiGRU'] = get_score(bigru, wk)
     models['GRU+Attn'] = get_score(attn, wk)
     models['BiGRU+Attn'] = get_score(biattn, wk)
+    if step is False:
+        models['K2vTune'] = get_score(k2v_data, wk)
     
     return models
