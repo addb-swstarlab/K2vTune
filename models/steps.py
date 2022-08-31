@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+from datetime import datetime
 from sklearn.preprocessing import MinMaxScaler
 import torch
 from torch.utils.data import DataLoader
@@ -202,7 +203,8 @@ def GA_optimization(knobs, fitness_function, logger, opt):
         ## cross-over and mutation
         new_solution_pool = np.zeros_like(best_solution_pool) # new_solution_pool.shape = (n_pool_half,22)
         for j in range(n_pool_half):
-            pivot = np.random.choice(np.arange(1,n_configs-1))
+            pivot = np.random.choice(np.arange(1,n_configs))
+            # pivot = np.random.choice(np.arange(1,n_configs-1))
             new_solution_pool[j][:pivot] = best_solution_pool[j][:pivot]
             new_solution_pool[j][pivot:] = best_solution_pool[n_pool_half-1-j][pivot:]
             
@@ -220,6 +222,14 @@ def GA_optimization(knobs, fitness_function, logger, opt):
         ## stack
         current_solution_pool = np.vstack([best_solution_pool, new_solution_pool]) # current_solution_pool.shape = (n_pool,22)
         current_solution_pool = pd.DataFrame(current_solution_pool, columns=knobs.columns)
+        
+        if (i+1)%25==0:
+            SOLUTION_PATH = '/home/jieun/Knob2Vec/save_solution'
+            if not os.path.isdir(SOLUTION_PATH):
+                os.makedirs(SOLUTION_PATH)
+            if not os.path.isdir(os.path.join(SOLUTION_PATH, datetime.today().strftime("%Y%m%d"))):
+                os.makedirs(os.path.join(SOLUTION_PATH, datetime.today().strftime("%Y%m%d")))
+            current_solution_pool.to_csv(os.path.join(SOLUTION_PATH, datetime.today().strftime("%Y%m%d"), f'gen{i+1}_{opt.target}_{opt.mode}_{opt.bidirect}.csv'))
         
         ## save best solution at each step
         step_best_solution.append(best_solution_pool[0])

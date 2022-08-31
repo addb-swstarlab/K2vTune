@@ -119,7 +119,7 @@ class Knob:
         self.knob2vec_te = torch.Tensor(self.get_knob2vec(self.X_te, self.lookuptable)).cuda()
 
     def get_knob2vec(self, data, table):
-        k2v = np.zeros((data.shape[0], 22, table.shape[1]))
+        k2v = np.zeros((data.shape[0], self.knobs.shape[-1], table.shape[1]))
         for i in range(data.shape[0]):
             if torch.is_tensor(data):
                 idx = (data[i]==1).nonzero(as_tuple=False).squeeze().cpu().detach().numpy()

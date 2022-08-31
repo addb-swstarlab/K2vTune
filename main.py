@@ -59,8 +59,8 @@ WK_NUM = 16
 def main():
     logger.info("## get raw datas ##")
     raw_knobs = rocksdb_knobs_make_dict(KNOB_PATH)
-    raw_knobs = pd.DataFrame(data=raw_knobs['data'].astype(np.float32), columns=raw_knobs['columnlabels'])
-
+    raw_knobs = pd.DataFrame(data=raw_knobs['data'].astype(np.float32), columns=raw_knobs['columnlabels'])  
+    
     internal_dict = {}
     external_dict = {}
 
@@ -165,21 +165,21 @@ def main():
     logger.info("## Train/Load Fitness Function DONE ##")
     logger.info("## Configuration Recommendation DONE ##")
     
-    if opt.step:
-        for s_cmd in step_recommend_command:
-            exec_benchmark(s_cmd, opt)
-        file_name = f"{datetime.today().strftime('%Y%m%d')}_{opt.sample_size}_steps_fitness.csv"
-        if os.path.isfile(file_name) is False:
-            pd.DataFrame(data=range(1,101), columns=['idx']).to_csv(file_name, index=False)
-        pd_steps = pd.read_csv(file_name, index_col=0)
-        if opt.bidirect:
-            pd_steps[f'{opt.target}_bi{opt.mode}'] = step_best_fitness
-        else:
-            pd_steps[f'{opt.target}_{opt.mode}'] = step_best_fitness
-        pd_steps.to_csv(file_name)
-    else:
-        ## Execute db_benchmark with recommended commands by transporting to other server
-        exec_benchmark(recommend_command, opt)
+    # if opt.step:
+    #     for s_cmd in step_recommend_command:
+    #         exec_benchmark(s_cmd, opt)
+    #     file_name = f"{datetime.today().strftime('%Y%m%d')}_{opt.sample_size}_steps_fitness.csv"
+    #     if os.path.isfile(file_name) is False:
+    #         pd.DataFrame(data=range(1,101), columns=['idx']).to_csv(file_name, index=False)
+    #     pd_steps = pd.read_csv(file_name, index_col=0)
+    #     if opt.bidirect:
+    #         pd_steps[f'{opt.target}_bi{opt.mode}'] = step_best_fitness
+    #     else:
+    #         pd_steps[f'{opt.target}_{opt.mode}'] = step_best_fitness
+    #     pd_steps.to_csv(file_name)
+    # else:
+    #     ## Execute db_benchmark with recommended commands by transporting to other server
+    #     exec_benchmark(recommend_command, opt)
 
 
 
