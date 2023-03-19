@@ -30,7 +30,7 @@ def get_euclidean_distance(internal_dict, logger, opt):
     # for im_d in internal_dict:
     #     wk.append(scaler.transform(internal_dict[im_d].iloc[:opt.target_size, :]))
     for im_d in internal_dict:
-        if im_d == 16:
+        if im_d == 16: # target workload
             wk.append(scaler.transform(internal_dict[im_d]))
         else:
             wk.append(scaler.transform(internal_dict[im_d].iloc[target_config_idx, :]))
