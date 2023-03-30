@@ -73,12 +73,17 @@ def draw_attention(config, similar_wk, model_path, color, title, save_path=None)
     model = torch.load(f'../model_save/{model_path}')
     model.tf = False
     model.batch_size = batch_size
-
+       
     # output, attn_w_ = model(conf_knob2vec.repeat(32, 1, 1))
     output, attn_w = model(k2v_te)
     
     attn_w = attn_w.cpu().detach().numpy()
     attn_w = np.average(attn_w, axis=0)
+    
+    columns = list(raw_knobs.columns)
+    columns.remove('compaction_style')
+    
+    attn_w = np.delete(attn_w, list(raw_knobs.columns).index('compaction_style'), axis=0)
     
     fig = plt.figure(figsize=(10, 10))
     ax = plt.gca()
@@ -88,10 +93,12 @@ def draw_attention(config, similar_wk, model_path, color, title, save_path=None)
 
     fontdict = {'fontsize': 14}
 
-    ax.set_xticks(np.arange(4))
+    ax.set_xticks(np.arange(len(external_columns)))
     ax.set_xticklabels(external_columns, fontdict=fontdict, rotation=90)
-    ax.set_yticks(np.arange(22))
-    ax.set_yticklabels(raw_knobs.columns, fontdict=fontdict)
+    ax.set_yticks(np.arange(len(columns)))
+    # ax.set_yticks(np.arange(22))
+    ax.set_yticklabels(columns, fontdict=fontdict)
+    # ax.set_yticklabels(raw_knobs.columns, fontdict=fontdict)
     fontdict = {'fontname': 'Times New Roman', 'fontsize':30, 'fontweight':'bold'}
     ax.set_title(title, fontdict=fontdict, y=-0.075)
 
@@ -246,22 +253,21 @@ def get_data(wk, path, step=True):
         biattn = pred_data[pred_data['model']=='attnbigru'].drop(columns=['model'])
     
     
-    
     models['Default'] = get_score(def_data, wk)
+    if step is False:
+        models['K2vTune'] = get_score(k2v_data, wk)
+    models['CDBTune'] = get_score(cdb_data, wk)
+    models['OtterTune'] = get_score(otter_data, wk)
     rand = get_score(random_data, wk)
     models['Random'] = get_max_data(random_data=rand)
 #     models['Random'] = rand
-    models['Facebook'] = get_score(fb_data, wk)
     models['DBA'] = get_score(dba_data, wk) 
-    models['OtterTune'] = get_score(otter_data, wk)
-    models['CDBTune'] = get_score(cdb_data, wk)
+    models['Facebook'] = get_score(fb_data, wk)
     models['Single'] = get_score(raw, wk)
     models['Single+Knob2vec'] = get_score(dnn, wk)
     models['GRU'] = get_score(gru, wk)
     models['BiGRU'] = get_score(bigru, wk)
     models['GRU+Attn'] = get_score(attn, wk)
     models['BiGRU+Attn'] = get_score(biattn, wk)
-    if step is False:
-        models['K2vTune'] = get_score(k2v_data, wk)
-    
+        
     return models
