@@ -2,6 +2,7 @@ import os
 import argparse
 import pandas as pd
 import numpy as np
+import models.steps
 from models.utils import get_logger, rocksdb_knobs_make_dict
 from models.knobs import Knob
 from models.steps import get_euclidean_distance, train_knob2vec, train_fitness_function, GA_optimization
@@ -29,11 +30,12 @@ parser.add_argument('--model_path', type=str, help='Define which .pt will be loa
 parser.add_argument('--pool', type=int, default=128, help='Define the number of pool to GA algorithm')
 parser.add_argument('--generation', type=int, default=1000, help='Define the number of generation to GA algorithm')
 parser.add_argument('--GA_batch_size', type=int, default=32, help='Define GA batch size')
-parser.add_argument('--ex_weight', type=float, action='append', help='Define external metrics weight to calculate score')
+# parser.add_argument('--ex_weight', type=float, action='append', help='Define external metrics weight to calculate score')
 parser.add_argument('--save', action='store_true', help='Choose save the score on csv file or just show')
 parser.add_argument('--step', action='store_true', help='If want to see stepped results, trigger this')
 parser.add_argument('--sample_size', type=int, default=20000, help='Define train sample size, max is 20000')
 parser.add_argument('--bidirect', action='store_true', help='Choose whether applying bidirectional GRU')
+parser.add_argument('--optimization', type=str, default='ga', choices=['ga', 'smac'], help='Define which .pt will be loaded on model')
 
 opt = parser.parse_args()
 
@@ -83,6 +85,11 @@ def main():
 
     knobs = Knob(raw_knobs, internal_dict, external_dict, opt.target, opt.sample_size)
 
+    # import pickle
+    
+    # with open("test_knob_class.pickle", "wb") as f:
+    #     pickle.dump(knobs, f)
+    # assert False
 
     logger.info("## Workload Mapping ##")
     similar_wk = get_euclidean_distance(internal_dict, logger, opt)
@@ -160,10 +167,12 @@ def main():
         pred_score[f'{opt.target}_{opt.mode}'] = [r2_res, pcc_res, ci_res]
     pred_score.to_csv(file_name)
     
-    recommend_command, step_recommend_command, step_best_fitness = GA_optimization(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
-
+    recommend_command, _, _ = getattr(models.steps, f"{opt.optimization.upper()}_optimization")(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
+    # recommend_command, step_recommend_command, step_best_fitness = GA_optimization()
     logger.info("## Train/Load Fitness Function DONE ##")
     logger.info("## Configuration Recommendation DONE ##")
+    
+    exec_benchmark(recommend_command, opt)
     
     # if opt.step:
     #     for s_cmd in step_recommend_command:
