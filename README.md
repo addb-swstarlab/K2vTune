@@ -15,16 +15,20 @@ eval        : mode of train using pre-trained model(.pt)
 model_path  : if using eval mode, add pre-trained model path  
 hidden_size : hidden size of the model  
 lr          : learning rate of the model  
-ex_weight   : balance weight for computing external metrics score and its summation must be 1  
+<!-- ex_weight   : balance weight for computing external metrics score and its summation must be 1   -->
 generation  : the counts of generation in Genetic Algorithm  
 </pre>
 * #### Training the model
 ```
+<!-- python main.py --target {target number} --tf --train --hidden_size {hidden size} --lr {learning rate} \
+--generation {generation number in genetic algorithm} --ex_weight 1 --ex_weight 1 --ex_weight 1 --ex_weight 1  -->
 python main.py --target {target number} --tf --train --hidden_size {hidden size} --lr {learning rate} \
---generation {generation number in genetic algorithm} --ex_weight 1 --ex_weight 1 --ex_weight 1 --ex_weight 1 
+--generation {generation number in genetic algorithm}
 ```
 * #### Training with pre-trained model path
 ```
+<!-- python main.py --target {target number} --tf --eval --model_path {model_path} \
+--generation {generation number in genetic algorithm} --ex_weight 1 --ex_weight 1 --ex_weight 1 --ex_weight 1  -->
 python main.py --target {target number} --tf --eval --model_path {model_path} \
---generation {generation number in genetic algorithm} --ex_weight 1 --ex_weight 1 --ex_weight 1 --ex_weight 1 
+--generation {generation number in genetic algorithm}
 ```
