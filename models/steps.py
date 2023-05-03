@@ -9,8 +9,10 @@ from models.network import RocksDBDataset, SingleNet, GRUNet, EncoderRNN, Decode
 from models.train import train, valid
 from models.utils import get_filename
 import models.rocksdb_option as option
+from models._smac import Knob2vec_SMAC
 from scipy.stats import gmean
 from sklearn.ensemble import RandomForestRegressor
+
 
 def euclidean_distance(a, b):
     res = a - b
@@ -20,20 +22,14 @@ def euclidean_distance(a, b):
 
 def get_euclidean_distance(internal_dict, logger, opt):
     scaler = MinMaxScaler().fit(pd.concat(internal_dict))
-    target_config_idx = [1004,1214,1312,2465,3306,3333,4569,4801,5124,5389,8490,9131,9143,11896,12065,12293,12491,13098,18088,19052]
+    
+    wk = []
+    for im_d in internal_dict:
+        wk.append(scaler.transform(internal_dict[im_d].iloc[:opt.target_size, :]))
     
     trg = opt.target
     if trg > 15:
         trg = 16
-    
-    wk = []
-    # for im_d in internal_dict:
-    #     wk.append(scaler.transform(internal_dict[im_d].iloc[:opt.target_size, :]))
-    for im_d in internal_dict:
-        if im_d == 16: # target workload
-            wk.append(scaler.transform(internal_dict[im_d]))
-        else:
-            wk.append(scaler.transform(internal_dict[im_d].iloc[target_config_idx, :]))
 
     big = 100
     for i in range(len(wk)):
@@ -45,6 +41,34 @@ def get_euclidean_distance(internal_dict, logger, opt):
     logger.info(f'best similar workload is {idx}th')
 
     return idx
+
+# def get_euclidean_distance(internal_dict, logger, opt):
+#     scaler = MinMaxScaler().fit(pd.concat(internal_dict))
+#     target_config_idx = [1004,1214,1312,2465,3306,3333,4569,4801,5124,5389,8490,9131,9143,11896,12065,12293,12491,13098,18088,19052]
+    
+#     trg = opt.target
+#     if trg > 15:
+#         trg = 16
+    
+#     wk = []
+#     # for im_d in internal_dict:
+#     #     wk.append(scaler.transform(internal_dict[im_d].iloc[:opt.target_size, :]))
+#     for im_d in internal_dict:
+#         if im_d == 16: # target workload
+#             wk.append(scaler.transform(internal_dict[im_d]))
+#         else:
+#             wk.append(scaler.transform(internal_dict[im_d].iloc[target_config_idx, :]))
+
+#     big = 100
+#     for i in range(len(wk)):
+#         ed = euclidean_distance(wk[trg], wk[i])
+#         if ed<big and trg != i: 
+#             big=ed
+#             idx = i
+#         logger.info(f'{i:4}th   {ed:.5f}')
+#     logger.info(f'best similar workload is {idx}th')
+
+#     return idx
 
 def train_knob2vec(knobs, logger, opt):
     Dataset_tr = RocksDBDataset(knobs.X_tr, knobs.norm_im_tr)
@@ -129,10 +153,16 @@ def train_fitness_function(knobs, logger, opt):
         _, outputs = valid(model, loader_K2vec_te)
         return model, outputs
 
-def score_function(df, pr, ex_w):
+# def score_function(df, pr, ex_w):
+#     if df.size > 1:
+#         df = df.squeeze()
+#     score = (df[0] - pr[0]) * ex_w[0] + (pr[1] - df[1]) * ex_w[1] + (df[2] - pr[2]) * ex_w[2] + (df[3] - pr[3]) * ex_w[3]
+#     return round(score, 6)
+
+def score_function(df, pr):
     if df.size > 1:
         df = df.squeeze()
-    score = (df[0] - pr[0]) * ex_w[0] + (pr[1] - df[1]) * ex_w[1] + (df[2] - pr[2]) * ex_w[2] + (df[3] - pr[3]) * ex_w[3]
+    score = (df[0] - pr[0]) + (pr[1] - df[1]) + (df[2] - pr[2] + (df[3] - pr[3])
     return round(score, 6)
 
 def set_fitness_function(solution, model, knobs, opt):
@@ -154,12 +184,13 @@ def set_fitness_function(solution, model, knobs, opt):
             fitness_batch, _ = model(data)
             # fitness_batch = knobs.scaler_em.inverse_transform(fitness_batch.cpu().numpy()) # if fitness_batch's type is torch.Tensor()
             fitness_batch = fitness_batch.cpu().numpy()
-            fitness_batch = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness_batch]
+            fitness_batch = [score_function(knobs.default_trg_em, _) for _ in fitness_batch]
+            # fitness_batch = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness_batch]
             fitness_f += fitness_batch # [1,2] += [3,4,5] --> [1,2,3,4,5]
     
     return fitness_f
 
-def GA_optimization(knobs, fitness_function, logger, opt):    
+def GA_optimization(knobs, fitness_function, logger, opt):
     configs = knobs.knobs#.to_numpy()
     n_configs = configs.shape[1]
     n_pool_half = int(opt.pool/2)
@@ -167,7 +198,8 @@ def GA_optimization(knobs, fitness_function, logger, opt):
 
     ## use pool nums of top to initialize current_solution_pool
     scaled_em = knobs.scaler_em.transform(knobs.s_external_metrics)
-    em_score = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in scaled_em]
+    # em_score = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in scaled_em]
+    em_score = [score_function(knobs.default_trg_em, _) for _ in scaled_em]
     em_score = [_*-1 for _ in em_score]
     idx_em = np.argsort(em_score)[:opt.pool]
     
@@ -184,7 +216,8 @@ def GA_optimization(knobs, fitness_function, logger, opt):
         elif opt.mode == 'RF':
             scaled_pool = knobs.scaler_k.transform(current_solution_pool)
             fitness = fitness_function.predict(scaled_pool)
-            fitness = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness]
+            fitness = [score_function(knobs.default_trg_em, _) for _ in fitness]
+            # fitness = [score_function(knobs.default_trg_em, _, opt.ex_weight) for _ in fitness]
         else:
             onehot_pool = knobs.load_knobsOneHot(k=current_solution_pool, save=False)
             onehot_pool = torch.Tensor(onehot_pool).cuda()
@@ -253,6 +286,15 @@ def GA_optimization(knobs, fitness_function, logger, opt):
             cmd = convert_int_to_category(col, cmd, step_solution[idx])
         cmd = make_dbbench_command(opt.target, cmd)
         step_recommend_command.append(cmd)
+    
+    return recommend_command, step_recommend_command, step_best_fitness
+
+def SMAC_optimization(knobs, fitness_function, logger, opt):
+    tuner = Knob2vec_SMAC(knobs=knobs, predictive_model=fitness_function, opt=opt)
+    
+    recommend_command = None
+    step_recommend_command = None
+    step_best_fitness = None
     
     return recommend_command, step_recommend_command, step_best_fitness
 
