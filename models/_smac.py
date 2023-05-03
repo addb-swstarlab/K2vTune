@@ -71,9 +71,9 @@ class Knob2vec_SMAC(object):
         onehot_X = self.knobs.load_knobsOneHot(k=X, save=False)
         onehot_X = torch.Tensor(onehot_X).cuda()
         k2v_X = self.knobs.get_knob2vec(onehot_X, self.knobs.lookuptable)
-        k2v_X = torch.Tensor(k2v_X).cuda() # (1, 1, 128)
+        k2v_X = torch.Tensor(k2v_X).cuda() # (1, 22, 128)
         print(k2v_X.shape)
-        k2v_X = k2v_X.repeat(1, self.opt.batch_size, 1) # fit size to (1, batch, 128)
+        k2v_X = k2v_X.repeat(self.opt.batch_size, 1, 1) # fit size to (batch, 22, 128)
         print(k2v_X.shape)
         with torch.no_grad():
             res = self.predictive_model(k2v_X)
