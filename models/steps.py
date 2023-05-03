@@ -162,7 +162,7 @@ def train_fitness_function(knobs, logger, opt):
 def score_function(df, pr):
     if df.size > 1:
         df = df.squeeze()
-    score = (df[0] - pr[0]) + (pr[1] - df[1]) + (df[2] - pr[2] + (df[3] - pr[3])
+    score = (df[0] - pr[0]) + (pr[1] - df[1]) + (df[2] - pr[2]) + (df[3] - pr[3])
     return round(score, 6)
 
 def set_fitness_function(solution, model, knobs, opt):
