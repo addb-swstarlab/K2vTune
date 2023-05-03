@@ -78,7 +78,8 @@ class Knob:
         for col in self.columns:
             iv = self.knobs[[col]].value_counts()#.reset_index(level=0).drop(columns=0)
             iv = iv.sort_index()
-            self.index_value[col] = pd.Series(data=range(len(iv)), index=iv.index)
+            idx = [round(_[0], 2) for _ in list(iv.index)] # For prevent floating point on float value
+            self.index_value[col] = pd.Series(data=range(len(iv)), index=idx)
         return self.index_value
     
     def make_knobsOneHot(self, k):
@@ -89,6 +90,7 @@ class Knob:
         for i in range(len(k)):   
             sample = torch.Tensor()
             for col in self.columns:
+                print(col)
                 knob_one_hot = torch.zeros(len(self.index_value[col]))
                 knob_one_hot[self.index_value[col][k[col][i]]] = 1
                 sample = torch.cat((sample, knob_one_hot))
