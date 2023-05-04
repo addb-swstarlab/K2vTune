@@ -78,7 +78,7 @@ class Knob:
         for col in self.columns:
             iv = self.knobs[[col]].value_counts()#.reset_index(level=0).drop(columns=0)
             iv = iv.sort_index()
-            idx = [round(_[0], 2) for _ in list(iv.index)] # For prevent floating point on float value
+            idx = [str(round(_[0], 2)) for _ in list(iv.index)] # For prevent floating point on float value
             self.index_value[col] = pd.Series(data=range(len(iv)), index=idx)
         return self.index_value
     
@@ -90,10 +90,18 @@ class Knob:
         for i in range(len(k)):   
             sample = torch.Tensor()
             for col in self.columns:
-                print(col)
-                knob_one_hot = torch.zeros(len(self.index_value[col]))
-                knob_one_hot[self.index_value[col][k[col][i]]] = 1
-                sample = torch.cat((sample, knob_one_hot))
+                try:
+                    knob_one_hot = torch.zeros(len(self.index_value[col]))
+                    val = str(round(k[col][i], 2)) # For prevent floating point on float value
+                    knob_one_hot[self.index_value[col][val]] = 1
+                    sample = torch.cat((sample, knob_one_hot))
+                ####################################################################################
+                except: # get the key with string.... fucking floating point #######################
+                    print("val: ", val)
+                    print("col: ", col)
+                    print("k[col][i]: ", k[col][i])
+                    print("index_value key: ", self.index_value[col].keys())
+                    print("WHAT? ", self.index_value[col][val])
             sample = sample.unsqueeze(0)
             knobs_one_hot = torch.cat((knobs_one_hot, sample))
         return np.array(knobs_one_hot)
