@@ -8,15 +8,17 @@ from models.rocksdb_option import def_option, KB, MB
 import torch
 
 class Knob2vec_SMAC(object):
-    def __init__(self, knobs, predictive_model, opt, config_info_path=None):
+    def __init__(self, knobs, predictive_model, opt, logger, config_info_path=None):
         self.opt = opt
+        self.logger = logger
         self.knobs = knobs
         self.predictive_model = predictive_model
         self.config_info_path = config_info_path
 
+        self._eval_model()
         self._get_scenario_path_name()
         self._init_scenario()
-        
+                
     def _eval_model(self):
         self.predictive_model.eval()
         self.predictive_model.tf = False
@@ -29,9 +31,9 @@ class Knob2vec_SMAC(object):
             i += 1
             name = date_str + '-' + '%02d'%i
         self.scenario_name = name
-        logging.info("#########################################################")
-        logging.info("Scenario data will saved in {}".format(os.path.join('smac3_output', self.scenario_name)))
-        logging.info("#########################################################\n")        
+        self.logger.info("############################################")
+        self.logger.info("Scenario data will saved in {}".format(os.path.join('smac3_output', self.scenario_name)))
+        self.logger.info("############################################\n")        
     
     def _init_scenario(self):
         self.cs = ConfigurationSpace()
@@ -62,8 +64,6 @@ class Knob2vec_SMAC(object):
         self.cs.add_hyperparameters(hyps)
         self.scenario = Scenario(self.cs, deterministic=True, n_trials=self.opt.generation, name=self.scenario_name)
         
-        self._target_function(self.cs.sample_configuration())
-        
     def _target_function(self, config: Configuration, seed: int = 0) -> float:
         config['compaction_style'] = 0
         X = pd.DataFrame.from_dict(config.get_dictionary(), orient='index').T        
@@ -72,13 +72,21 @@ class Knob2vec_SMAC(object):
         onehot_X = torch.Tensor(onehot_X).cuda()
         k2v_X = self.knobs.get_knob2vec(onehot_X, self.knobs.lookuptable)
         k2v_X = torch.Tensor(k2v_X).cuda() # (1, 22, 128)
-        print(k2v_X.shape)
         k2v_X = k2v_X.repeat(self.opt.batch_size, 1, 1) # fit size to (batch, 22, 128)
-        print(k2v_X.shape)
+        
         with torch.no_grad():
-            res = self.predictive_model(k2v_X)
+            res, _ = self.predictive_model(k2v_X)
         
-        print(res)
+        res = res.mean(dim=0).cpu().numpy().squeeze()
         
-        assert False
+        if self.knobs.default_trg_em.size > 1:
+            self.knobs.default_trg_em = self.knobs.default_trg_em.squeeze()
+        score = (self.knobs.default_trg_em[0] - res[0]) + (res[1] - self.knobs.default_trg_em[1]) + (self.knobs.default_trg_em[2] - res[2]) + (self.knobs.default_trg_em[3] - res[3])
+        return -score # minimize
         
+    def tune(self):
+        self.smac = HyperparameterOptimizationFacade(scenario=self.scenario, target_function=self._target_function)
+        self.incumbent = self.smac.optimize()
+        self.logger.info("The score of best solution is {}".format(self.smac.validate(self.incumbent)))
+        return self.incumbent
+    
