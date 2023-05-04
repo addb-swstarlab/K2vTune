@@ -60,7 +60,7 @@ def draw_attention(config, similar_wk, model_path, color, title, save_path=None)
     raw_knobs = rocksdb_knobs_make_dict(KNOB_PATH)
     raw_knobs = pd.DataFrame(data=raw_knobs['data'].astype(np.float32), columns=raw_knobs['columnlabels'])
     
-    external_columns = ['TIME', 'RATE', 'WAF', 'SA']
+    external_columns = ['TIME', 'RATE', 'W-amp', 'S-amp']
     # index_value = get_index_value(raw_knobs)
     # # conf_one_hot = make_knobsOneHot(index_value, config, raw_knobs)
     conf_one_hot = np.load("../data/knobsOneHot.npy")
@@ -91,7 +91,7 @@ def draw_attention(config, similar_wk, model_path, color, title, save_path=None)
     im = ax.matshow(attn_w, interpolation='none', cmap=color)
     fig.colorbar(im)
 
-    fontdict = {'fontsize': 14}
+    fontdict = {'fontname': 'Times New Roman','fontsize': 20}
 
     ax.set_xticks(np.arange(len(external_columns)))
     ax.set_xticklabels(external_columns, fontdict=fontdict, rotation=90)
