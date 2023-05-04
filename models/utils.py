@@ -20,6 +20,7 @@ def get_logger(log_path='./logs'):
         os.mkdir(log_path)
 
     logger = logging.getLogger()
+    
     date_format = '%Y-%m-%d %H:%M:%S'
     formatter = logging.Formatter('%(asctime)s[%(levelname)s] %(filename)s:%(lineno)s  %(message)s', date_format)
     name = get_filename(log_path, 'log', '.log')
