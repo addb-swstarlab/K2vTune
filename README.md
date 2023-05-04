@@ -4,6 +4,14 @@ We propose the methods to convert scalar knobs to vector representation
 ## Requirements
 - lifelines
 - pytorch == 1.7.0
+- python >= 3.8
+### SMAC library
+- https://automl.github.io/SMAC3/main/index.html
+#### How to install
+<pre>
+conda install gxx_linux-64 gcc_linux-64 swig
+pip install smac
+</pre>
 
 ## TRAIN
 ### Run main.py to train the entire model. Paser explanation as below,
