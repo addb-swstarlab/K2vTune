@@ -2,17 +2,15 @@ import os
 import argparse
 import pandas as pd
 import numpy as np
-import models.steps
 from models.utils import get_logger, rocksdb_knobs_make_dict
+import models.steps
 from models.knobs import Knob
-from models.steps import get_euclidean_distance, train_knob2vec, train_fitness_function, GA_optimization
+from models.steps import get_euclidean_distance, train_knob2vec, train_fitness_function
 from sklearn.metrics import r2_score
 from scipy.stats import pearsonr
 from lifelines.utils import concordance_index
 from benchmark import exec_benchmark
 from datetime import datetime
-
-os.system('clear')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--target', type=int, default=1, help='Choose target workload')
@@ -45,8 +43,10 @@ if not os.path.exists('logs'):
 if not os.path.exists('model_save'):
     os.mkdir('model_save')
 
+import logging
+logger = logging.getLogger()
 
-logger, log_dir = get_logger(os.path.join('./logs'))
+# logger, log_dir = get_logger(os.path.join('./logs'))
 
 ## print parser info
 logger.info("## model hyperparameter information ##")
@@ -146,13 +146,13 @@ def main():
         pcc_res[idx] = res
         res = concordance_index(true[:,idx], pred[:,idx])
         ci_res[idx] = res
-    pcc_res = pcc_res/len(true)
-    ci_res = ci_res/len(true)
+    # pcc_res = pcc_res/len(true)
+    # ci_res = ci_res/len(true)
     logger.info('[PCC SCORE]')
-    # logger.info(f'TIME:{pcc_res[0]:.4f}, RATE:{pcc_res[1]:.4f}, WAF:{pcc_res[2]:.4f}, SA:{pcc_res[3]:.4f}')
+    logger.info(f'TIME:{pcc_res[0]:.4f}, RATE:{pcc_res[1]:.4f}, WAF:{pcc_res[2]:.4f}, SA:{pcc_res[3]:.4f}')
     logger.info(f'average pcc score = {np.average(pcc_res):.4f}')
     logger.info('[CI SCORE]')
-    # logger.info(f'TIME:{ci_res[0]:.4f}, RATE:{ci_res[1]:.4f}, WAF:{ci_res[2]:.4f}, SA:{ci_res[3]:.4f}')
+    logger.info(f'TIME:{ci_res[0]:.4f}, RATE:{ci_res[1]:.4f}, WAF:{ci_res[2]:.4f}, SA:{ci_res[3]:.4f}')
     logger.info(f'average ci score = {np.average(ci_res):.4f}')
         
 
@@ -169,6 +169,7 @@ def main():
     
     recommend_command, _, _ = getattr(models.steps, f"{opt.optimization.upper()}_optimization")(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
     # recommend_command, step_recommend_command, step_best_fitness = GA_optimization()
+
     logger.info("## Train/Load Fitness Function DONE ##")
     logger.info("## Configuration Recommendation DONE ##")
     
