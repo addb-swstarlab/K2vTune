@@ -28,15 +28,11 @@ generation  : the counts of generation in Genetic Algorithm
 </pre>
 * #### Training the model
 ```
-<!-- python main.py --target {target number} --tf --train --hidden_size {hidden size} --lr {learning rate} \
---generation {generation number in genetic algorithm} --ex_weight 1 --ex_weight 1 --ex_weight 1 --ex_weight 1  -->
 python main.py --target {target number} --tf --train --hidden_size {hidden size} --lr {learning rate} \
 --generation {generation number in genetic algorithm}
 ```
 * #### Training with pre-trained model path
 ```
-<!-- python main.py --target {target number} --tf --eval --model_path {model_path} \
---generation {generation number in genetic algorithm} --ex_weight 1 --ex_weight 1 --ex_weight 1 --ex_weight 1  -->
 python main.py --target {target number} --tf --eval --model_path {model_path} \
 --generation {generation number in genetic algorithm}
 ```
