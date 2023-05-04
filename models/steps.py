@@ -269,41 +269,52 @@ def GA_optimization(knobs, fitness_function, logger, opt):
         step_best_fitness.append(-np.min(fitness))
         
     final_solution = best_solution_pool[0]
-    recommend_command = ''
-    step_recommend_command = []
+    recommend_command = generate_recommend_command(knobs.columns, final_solution, opt.target)
     
-    for idx, col in enumerate(knobs.columns):                 
-        recommend_command = convert_int_to_category(col, recommend_command, final_solution[idx])
-        
-    recommend_command = make_dbbench_command(opt.target, recommend_command)
-
     logger.info(f"db_bench command is  {recommend_command}")
     
+    step_recommend_command = []
     for step in range(len(step_best_solution)):
-        cmd = ''
-        step_solution = step_best_solution[step]
-        for idx, col in enumerate(knobs.columns):
-            cmd = convert_int_to_category(col, cmd, step_solution[idx])
-        cmd = make_dbbench_command(opt.target, cmd)
+        cmd = generate_recommend_command(knobs.columns, step_best_solution[step], opt.target)        
         step_recommend_command.append(cmd)
     
     return recommend_command, step_recommend_command, step_best_fitness
 
 def SMAC_optimization(knobs, fitness_function, logger, opt):
-    tuner = Knob2vec_SMAC(knobs=knobs, predictive_model=fitness_function, opt=opt)
+    tuner = Knob2vec_SMAC(knobs=knobs, predictive_model=fitness_function, opt=opt, logger=logger)
+    final_solution = tuner.tune()    
+    logger.info(f"Final solution of SMAC is {final_solution}")
     
-    recommend_command = None
-    step_recommend_command = None
-    step_best_fitness = None
+    pd_fs = pd.DataFrame.from_dict(data=final_solution.get_dictionary(), orient='index').T
+    recommend_command = generate_recommend_command(knobs.columns, pd_fs, opt.target)
+     
+    logger.info(f"db_bench command is  {recommend_command}")
+    # step_recommend_command = None
+    # step_best_fitness = None
     
-    return recommend_command, step_recommend_command, step_best_fitness
+    return recommend_command, None, None
+
+def generate_recommend_command(cols, solution, target):
+    recommend_command = ''
+    for idx, col in enumerate(cols):
+        if isinstance(solution, pd.DataFrame):
+            recommend_command = convert_int_to_category(col, recommend_command, solution[col].item())
+        else:
+            recommend_command = convert_int_to_category(col, recommend_command, solution[idx])
+        
+    recommend_command = make_dbbench_command(target, recommend_command)
+    return recommend_command
 
 def convert_int_to_category(col, cmd, s):
     if col=='compression_type':
             ct = ["snappy", "zlib", "lz4", "none"]
-            cmd += f'-{col}={ct[int(s)]} '
+            cmd += f'-{col}={ct[round(s)]} '
+    elif col=="memtable_bloom_size_ratio" or col=="compression_ratio":
+        cmd += '-{}={:.2f} '.format(col, s)
+    elif col=="compaction_style":
+        cmd += '-{}=0 '.format(col)
     else:
-        cmd += f'-{col}={int(s)} '
+        cmd += '-{}={:.0f} '.format(col, s)
     return cmd
 
 def make_dbbench_command(trg_wk, rc_cmd):
