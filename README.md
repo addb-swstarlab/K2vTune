@@ -32,13 +32,18 @@ optimization : choose optimization algorithm ['ga', 'smac']
 * #### Training the model
 ```
 python main.py --target ${target_idx} --tf --train --hidden_size ${hidden_size} --lr ${learning_rate} \
---generation ${generation_num}
+--generation ${generation_num} --pool ${pool_num}
 ```
 * #### Training with pre-trained model path
 ```
 python main.py --target ${target_idx} --tf --eval --model_path ${model_path} \
---generation ${generation_num}
+--generation ${generation_num} --pool ${pool_num}
 ```
 We set the parameters as follows
-${hidden_size} = 128
-
+- `hidden_size = 128`
+- `lr = 0.001`
+- `generation = 100`
+- `pool = 128`
+- `mode = 'attngru'`
+- `attn_mode = 'general'`
+- `optimization = 'ga'`
