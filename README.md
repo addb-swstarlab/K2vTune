@@ -15,17 +15,19 @@ pip install smac
 ## TRAIN
 ### Run main.py to train the entire model. Paser explanation as below,
 <pre>
-target      : target workload number  
-tf          : using teacher forcing, if not specify this, the model will be trained by non-teacher forcing  
-train       : mode of train  
-eval        : mode of train using pre-trained model(.pt)  
-model_path  : if using eval mode, add pre-trained model path  
-batch_size  : batch size for dataset
-hidden_size : hidden size of the model  
-lr          : learning rate of the model  
-generation  : the counts of generation in Genetic Algorithm  
-pool        : size of pool in genetic algorithm
-optimization: choose optimization algorithm ['ga', 'smac']
+target       : target workload number  
+tf           : using teacher forcing, if not specify this, the model will be trained by non-teacher forcing  
+train        : mode of train  
+eval         : mode of train using pre-trained model(.pt)  
+model_path   : if using eval mode, add pre-trained model path  
+batch_size   : batch size for dataset
+hidden_size  : hidden size of the model  
+lr           : learning rate of the model
+mode         : regression model type ['raw', 'dnn', 'gru', 'attngru']
+attn_mode    : attention tyep ['dot', 'general', 'concat', 'bahdanau']
+generation   : the counts of generation in Genetic Algorithm  
+pool         : size of pool in genetic algorithm
+optimization : choose optimization algorithm ['ga', 'smac']
 </pre>
 * #### Training the model
 ```
@@ -34,6 +36,9 @@ python main.py --target ${target_idx} --tf --train --hidden_size ${hidden_size} 
 ```
 * #### Training with pre-trained model path
 ```
-python main.py --target {target number} --tf --eval --model_path {model_path} \
---generation {generation number in genetic algorithm}
+python main.py --target ${target_idx} --tf --eval --model_path ${model_path} \
+--generation ${generation_num}
 ```
+We set the parameters as follows
+${hidden_size} = 128
+
