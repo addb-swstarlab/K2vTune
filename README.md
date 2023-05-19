@@ -12,7 +12,7 @@ conda install gxx_linux-64 gcc_linux-64 swig
 pip install smac
 </pre>
 
-## TRAIN
+## QuickStart
 ### Run main.py to train the entire model. Paser explanation as below,
 <pre>
 target       : target workload number  
