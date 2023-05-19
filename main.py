@@ -20,7 +20,7 @@ parser.add_argument('--epochs', type=int, default=30, help='Define train epochs'
 parser.add_argument('--hidden_size', type=int, default=64, help='Define model hidden size')
 parser.add_argument('--batch_size', type=int, default=32, help='Define model batch size')
 parser.add_argument('--mode', type=str, default='gru', help='choose which model be used on fitness function')
-parser.add_argument('--attn_mode', type=str, choices=['dot', 'general', 'concat', 'bahdanau'], default='dot', help='choose which attention be used')
+parser.add_argument('--attn_mode', type=str, choices=['dot', 'general', 'concat', 'bahdanau'], default='general', help='choose which attention be used')
 parser.add_argument('--tf', action='store_true', help='Choose usage of teacher forcing. if trigger this, tf be true')
 parser.add_argument('--eval', action='store_true', help='if trigger, model goes eval mode')
 parser.add_argument('--train', action='store_true', help='if trigger, model goes triain mode')
