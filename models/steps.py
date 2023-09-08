@@ -46,7 +46,7 @@ def get_euclidean_distance(internal_dict, external_dict, logger, opt):
             df_internal = internal_dict[idx].reset_index(drop=True)
             df_external = external_dict[idx].reset_index(drop=True)
             comb = pd.concat([df_internal, df_external], axis=1)
-            wk.append(comb.coor()[metrics].iloc[-4])
+            wk.append(comb.corr()[metrics].iloc[-4])
 
     trg = opt.target
     if trg > 15:
