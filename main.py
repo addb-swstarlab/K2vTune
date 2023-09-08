@@ -34,6 +34,7 @@ parser.add_argument('--step', action='store_true', help='If want to see stepped 
 parser.add_argument('--sample_size', type=int, default=20000, help='Define train sample size, max is 20000')
 parser.add_argument('--bidirect', action='store_true', help='Choose whether applying bidirectional GRU')
 parser.add_argument('--optimization', type=str, default='ga', choices=['ga', 'smac'], help='Define which .pt will be loaded on model')
+parser.add_argument('--wm_mode', type=str, default='corr', choices=['corr', 'internal', 'external'], help='Define the mode to calculate workload similarities')
 
 opt = parser.parse_args()
 
@@ -92,7 +93,7 @@ def main():
     # assert False
 
     logger.info("## Workload Mapping ##")
-    similar_wk = get_euclidean_distance(internal_dict, logger, opt)
+    similar_wk = get_euclidean_distance(internal_dict, external_dict, logger, opt)
     logger.info("## Workload Mapping DONE##")
 
 
