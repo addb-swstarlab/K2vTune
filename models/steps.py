@@ -20,7 +20,7 @@ def euclidean_distance(a, b):
     res = np.sqrt(res)
     return np.average(res)
 
-def get_euclidean_distance(internal_dict, logger, opt):
+def get_euclidean_distance(internal_dict, external_dict, logger, opt):
     scaler = MinMaxScaler().fit(pd.concat(internal_dict))
     
     wk = []
