@@ -1,5 +1,5 @@
 # TMP Repository
-
+- This workload mapping step in this version is calculated by only internal metrics.
 ## Requirements
 - lifelines
 - pytorch == 1.7.0
