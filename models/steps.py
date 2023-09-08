@@ -14,26 +14,50 @@ from scipy.stats import gmean
 from sklearn.ensemble import RandomForestRegressor
 
 
-def euclidean_distance(a, b):
+def euclidean_distance1(a, b):
     res = a - b
     res = res ** 2
     res = np.sqrt(res)
     return np.average(res)
 
+def euclidean_distance2(a, b):
+    res = a - b
+    res = res ** 2
+    res = np.sqrt(res)
+    res = np.mean(res)
+    return np.average(res)
+
 def get_euclidean_distance(internal_dict, external_dict, logger, opt):
-    scaler = MinMaxScaler().fit(pd.concat(internal_dict))
-    
     wk = []
-    for im_d in internal_dict:
-        wk.append(scaler.transform(internal_dict[im_d].iloc[:opt.target_size, :]))
     
+    if opt.wm_mode == 'internal':
+        scaler = MinMaxScaler().fit(pd.concat(internal_dict))
+        for im_d in internal_dict:
+            wk.append(scaler.transform(internal_dict[im_d].iloc[:opt.target_size, :]))
+    
+    elif opt.wm_mode == 'external':
+        scaler = MinMaxScaler().fit(pd.concat(external_dict))
+        for ex_d in external_dict:
+            wk.append(scaler.transform(external_dict[ex_d].iloc[:opt.target_size, :]))
+    
+    elif opt.wm_mode == 'corr':
+        metrics = ["TIME", "RATE", "WAF", "SA"]
+        for idx in internal_dict.keys():
+            df_internal = internal_dict[idx].reset_index(drop=True)
+            df_external = external_dict[idx].reset_index(drop=True)
+            comb = pd.concat([df_internal, df_external], axis=1)
+            wk.append(comb.coor()[metrics].iloc[-4])
+
     trg = opt.target
     if trg > 15:
         trg = 16
 
     big = 100
     for i in range(len(wk)):
-        ed = euclidean_distance(wk[trg], wk[i])
+        if opt.wm_mode == 'corr':
+            ed = euclidean_distance2(wk[trg], wk[i])
+        else:
+            ed = euclidean_distance1(wk[trg], wk[i])
         if ed<big and trg != i: 
             big=ed
             idx = i
@@ -41,6 +65,28 @@ def get_euclidean_distance(internal_dict, external_dict, logger, opt):
     logger.info(f'best similar workload is {idx}th')
 
     return idx
+
+# def get_euclidean_distance(internal_dict, logger, opt):
+#     scaler = MinMaxScaler().fit(pd.concat(internal_dict))
+    
+#     wk = []
+#     for im_d in internal_dict:
+#         wk.append(scaler.transform(internal_dict[im_d].iloc[:opt.target_size, :]))
+    
+#     trg = opt.target
+#     if trg > 15:
+#         trg = 16
+
+#     big = 100
+#     for i in range(len(wk)):
+#         ed = euclidean_distance(wk[trg], wk[i])
+#         if ed<big and trg != i: 
+#             big=ed
+#             idx = i
+#         logger.info(f'{i:4}th   {ed:.5f}')
+#     logger.info(f'best similar workload is {idx}th')
+
+#     return idx
 
 # def get_euclidean_distance(internal_dict, logger, opt):
 #     scaler = MinMaxScaler().fit(pd.concat(internal_dict))
