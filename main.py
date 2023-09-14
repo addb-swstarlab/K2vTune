@@ -35,6 +35,7 @@ parser.add_argument('--sample_size', type=int, default=20000, help='Define train
 parser.add_argument('--bidirect', action='store_true', help='Choose whether applying bidirectional GRU')
 parser.add_argument('--optimization', type=str, default='ga', choices=['ga', 'smac'], help='Define which .pt will be loaded on model')
 parser.add_argument('--wm_mode', type=str, default='corr', choices=['corr', 'internal', 'external'], help='Define the mode to calculate workload similarities')
+parser.add_argument('--similar_wk', type=int, default=None, help='If this parameter is defined, workload mapping is skipped')
 
 opt = parser.parse_args()
 
@@ -93,7 +94,11 @@ def main():
     # assert False
 
     logger.info("## Workload Mapping ##")
-    similar_wk = get_euclidean_distance(internal_dict, external_dict, logger, opt)
+    if opt.similar_wk is not None:
+        logger.info("$$ Skip Workload Mapping $$")
+        similar_wk = opt.similar_wk
+    else:
+        similar_wk = get_euclidean_distance(internal_dict, external_dict, logger, opt)
     logger.info("## Workload Mapping DONE##")
 
 
