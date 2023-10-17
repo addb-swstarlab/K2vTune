@@ -177,30 +177,11 @@ def main():
     pred_score.to_csv(file_name)
     
     recommend_command, _, _ = getattr(models.steps, f"{opt.optimization.upper()}_optimization")(knobs=knobs, fitness_function=fitness_function, logger=logger, opt=opt)
-    # recommend_command, step_recommend_command, step_best_fitness = GA_optimization()
 
     logger.info("## Train/Load Fitness Function DONE ##")
     logger.info("## Configuration Recommendation DONE ##")
     
     exec_benchmark(recommend_command, opt)
-    
-    # if opt.step:
-    #     for s_cmd in step_recommend_command:
-    #         exec_benchmark(s_cmd, opt)
-    #     file_name = f"{datetime.today().strftime('%Y%m%d')}_{opt.sample_size}_steps_fitness.csv"
-    #     if os.path.isfile(file_name) is False:
-    #         pd.DataFrame(data=range(1,101), columns=['idx']).to_csv(file_name, index=False)
-    #     pd_steps = pd.read_csv(file_name, index_col=0)
-    #     if opt.bidirect:
-    #         pd_steps[f'{opt.target}_bi{opt.mode}'] = step_best_fitness
-    #     else:
-    #         pd_steps[f'{opt.target}_{opt.mode}'] = step_best_fitness
-    #     pd_steps.to_csv(file_name)
-    # else:
-    #     ## Execute db_benchmark with recommended commands by transporting to other server
-    #     exec_benchmark(recommend_command, opt)
-
-
 
 if __name__ == '__main__':
     try:
