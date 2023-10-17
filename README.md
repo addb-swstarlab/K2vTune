@@ -30,8 +30,9 @@ pool         : size of pool in genetic algorithm
 optimization : choose optimization algorithm ['ga', 'smac']
 </pre>
 * #### Training the model
+Please modify arguments in the bash file. See train.sh
 ```
-./main.sh train # Please modify arguments in the bash file
+./main.sh train
 ```
 or
 ```
@@ -39,6 +40,11 @@ python main.py --target ${target_idx} --tf --train --hidden_size ${hidden_size} 
 --generation ${generation_num} --pool ${pool_num}
 ```
 * #### Training with pre-trained model path
+Please modify arguments in the bash file. See eval.sh
+```
+./main.sh eval
+```
+or
 ```
 python main.py --target ${target_idx} --tf --eval --model_path ${model_path} \
 --generation ${generation_num} --pool ${pool_num}
