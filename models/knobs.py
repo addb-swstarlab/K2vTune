@@ -8,13 +8,14 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 WK_NUM = 16
 
 class Knob:
-    def __init__(self, knobs, internal_metrics, external_metrics, target_wk, sample_size):
+    def __init__(self, knobs, internal_metrics, external_metrics, opt, target_wk, sample_size):
         """
             This class includes knobs, internal metrics, external metrics, target workload info and scaler of data
         """
         self.knobs = knobs
         self.internal_metrics = internal_metrics
         self.external_metrics = external_metrics
+        self.opt = opt
         self.target_wk = target_wk
         self.columns = self.knobs.columns
         self.index_value = self.get_index_value()
@@ -113,6 +114,9 @@ class Knob:
             if save is False, this is used at Genetic Algorithm steps
             Otherwise, make one-hot vector and save the vectors to .npy.
         '''
+        if self.opt.topK is not None:
+            self.KNOBSONEHOT_PATH = f'data/{self.opt.target}_top{self.opt.topK}_knobsOneHot.npy'
+        
         if os.path.exists(self.KNOBSONEHOT_PATH) and save: 
             return np.load(self.KNOBSONEHOT_PATH)
         elif not save: # for GA not save gained one-hot vectors
@@ -130,6 +134,7 @@ class Knob:
 
     def get_knob2vec(self, data, table):
         k2v = np.zeros((data.shape[0], self.knobs.shape[-1], table.shape[1]))
+
         for i in range(data.shape[0]):
             if torch.is_tensor(data):
                 idx = (data[i]==1).nonzero(as_tuple=False).squeeze().cpu().detach().numpy()
