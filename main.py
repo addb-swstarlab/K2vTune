@@ -34,9 +34,8 @@ parser.add_argument('--step', action='store_true', help='If want to see stepped 
 parser.add_argument('--sample_size', type=int, default=20000, help='Define train sample size, max is 20000')
 parser.add_argument('--bidirect', action='store_true', help='Choose whether applying bidirectional GRU')
 parser.add_argument('--optimization', type=str, default='ga', choices=['ga', 'smac'], help='Define which .pt will be loaded on model')
-parser.add_argument('--wm_mode', type=str, default='internal', choices=['corr', 'internal', 'external'], help='Define the mode to calculate workload similarities')
+parser.add_argument('--wm_mode', type=str, default='corr', choices=['corr', 'internal', 'external'], help='Define the mode to calculate workload similarities')
 parser.add_argument('--similar_wk', type=int, default=None, help='If this parameter is defined, workload mapping is skipped')
-parser.add_argument('--topK', type=int, default=None, help='Tuning only top-k knobs')
 
 opt = parser.parse_args()
 
@@ -61,37 +60,10 @@ EXTERNAL_PATH = 'data/external'
 INTERNAL_PATH = 'data/internal'
 WK_NUM = 16
 
-TOP_5K_COLUMNS = {16:['max_background_flushes', 'target_file_size_multiplier', 'open_files', 'max_background_compactions', 'compression_ratio'],
-                  17:['max_write_buffer_number', 'write_buffer_size', 'max_background_compactions', 'max_background_flushes', 'compression_ratio'],
-                  18:['min_write_buffer_number_to_merge', 'write_buffer_size', 'compression_ratio', 'max_background_compactions', 'max_background_flushes'],
-                  19:['max_write_buffer_number', 'write_buffer_size', 'max_background_flushes', 'max_background_compactions', 'compression_ratio'],
-                  20:['max_write_buffer_number', 'write_buffer_size', 'compression_ratio', 'max_background_flushes', 'max_background_compactions'],
-                  21:['max_write_buffer_number', 'write_buffer_size', 'max_background_compactions', 'max_background_flushes', 'compression_ratio']
-                  }
-TOP_10K_COLUMNS = {16:['max_bytes_for_level_base', 'bloom_locality', 'target_file_size_base', 'num_levels', 'max_write_buffer_number',
-                       'memtable_bloom_size_ratio', 'target_file_size_multiplier', 'max_background_flushes', 'compression_ratio', 'max_background_compactions'],
-                   17:['compression_type', 'target_file_size_base', 'level0_file_num_compaction_trigger', 'compaction_pri', 'min_write_buffer_number_to_merge',
-                       'max_write_buffer_number', 'write_buffer_size', 'max_background_compactions', 'max_background_flushes', 'compression_ratio'],
-                   18:['compression_type', 'level0_slowdown_writes_trigger', 'level0_file_num_compaction_trigger', 'max_write_buffer_number', 'compaction_pri',
-                       'min_write_buffer_number_to_merge', 'write_buffer_size', 'max_background_compactions', 'compression_ratio', 'max_background_flushes'],
-                   19:['memtable_bloom_size_ratio', 'target_file_size_base', 'min_write_buffer_number_to_merge', 'num_levels', 'target_file_size_multiplier',
-                       'max_write_buffer_number', 'write_buffer_size', 'max_background_flushes', 'max_background_compactions', 'compression_ratio'],
-                   20:['bloom_locality', 'level0_file_num_compaction_trigger', 'open_files', 'compaction_pri', 'min_write_buffer_number_to_merge',
-                       'max_write_buffer_number', 'write_buffer_size', 'compression_ratio', 'max_background_flushes', 'max_background_compactions'],
-                   21:['block_size', 'compaction_pri', 'open_files', 'min_write_buffer_number_to_merge', 'bloom_locality',
-                       'max_write_buffer_number', 'write_buffer_size', 'max_background_compactions', 'max_background_flushes', 'compression_ratio']
-                  }
-
-
 def main():
     logger.info("## get raw datas ##")
     raw_knobs = rocksdb_knobs_make_dict(KNOB_PATH)
     raw_knobs = pd.DataFrame(data=raw_knobs['data'].astype(np.float32), columns=raw_knobs['columnlabels'])  
-    
-    if opt.topK == 5:
-        raw_knobs = raw_knobs[TOP_5K_COLUMNS[opt.target]]
-    elif opt.topK == 10:
-        raw_knobs = raw_knobs[TOP_10K_COLUMNS[opt.target]]
     
     internal_dict = {}
     external_dict = {}
@@ -113,7 +85,7 @@ def main():
     logger.info('## get raw datas DONE ##')
 
 
-    knobs = Knob(raw_knobs, internal_dict, external_dict, opt, opt.target, opt.sample_size)
+    knobs = Knob(raw_knobs, internal_dict, external_dict, opt.target, opt.sample_size)
 
     # import pickle
     
@@ -135,16 +107,13 @@ def main():
     knobs.scale_data()
     logger.info("## Train Knob2Vec for similar workload ##")
     # if there is pre-trained model results, just load numpy file or train model and get table results
-    if opt.topK is not None:
-        LOOKUPTABLE_PATH = os.path.join('data/lookuptable', str(knobs.s_wk), f'{opt.target}_{opt.sample_size}_top{opt.topK}_LookupTable.npy')
-    else:
-        LOOKUPTABLE_PATH = os.path.join('data/lookuptable', str(knobs.s_wk), f'{opt.target}_{opt.sample_size}_LookupTable.npy')
+    LOOKUPTABLE_PATH = os.path.join('data/lookuptable', str(knobs.s_wk), f'{opt.sample_size}_LookupTable.npy')
     if os.path.exists(LOOKUPTABLE_PATH):
         logger.info("lookup table file is already existed. Load the file")
         knobs.set_lookuptable(np.load(LOOKUPTABLE_PATH))
     else:
         logger.info("lookup table file is not existed. Train knob2vec model")
-        knobs.set_lookuptable(train_knob2vec(knobs=knobs, logger=logger, opt=opt, path=LOOKUPTABLE_PATH))
+        knobs.set_lookuptable(train_knob2vec(knobs=knobs, logger=logger, opt=opt))
     knobs.set_knob2vec()
     logger.info("## Train Knob2Vec for similar workload DONE##")
   
