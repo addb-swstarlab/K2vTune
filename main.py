@@ -11,6 +11,7 @@ from scipy.stats import pearsonr
 from lifelines.utils import concordance_index
 from benchmark import exec_benchmark
 from datetime import datetime
+from top_knobs import TOP_5K_COLUMNS, TOP_10K_COLUMNS
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--target', type=int, default=1, help='Choose target workload')
@@ -28,7 +29,6 @@ parser.add_argument('--model_path', type=str, help='Define which .pt will be loa
 parser.add_argument('--pool', type=int, default=128, help='Define the number of pool to GA algorithm')
 parser.add_argument('--generation', type=int, default=1000, help='Define the number of generation to GA algorithm')
 parser.add_argument('--GA_batch_size', type=int, default=32, help='Define GA batch size')
-# parser.add_argument('--ex_weight', type=float, action='append', help='Define external metrics weight to calculate score')
 parser.add_argument('--save', action='store_true', help='Choose save the score on csv file or just show')
 parser.add_argument('--step', action='store_true', help='If want to see stepped results, trigger this')
 parser.add_argument('--sample_size', type=int, default=20000, help='Define train sample size, max is 20000')
@@ -61,28 +61,6 @@ EXTERNAL_PATH = 'data/external'
 INTERNAL_PATH = 'data/internal'
 WK_NUM = 16
 
-TOP_5K_COLUMNS = {16:['max_background_flushes', 'target_file_size_multiplier', 'open_files', 'max_background_compactions', 'compression_ratio'],
-                  17:['max_write_buffer_number', 'write_buffer_size', 'max_background_compactions', 'max_background_flushes', 'compression_ratio'],
-                  18:['min_write_buffer_number_to_merge', 'write_buffer_size', 'compression_ratio', 'max_background_compactions', 'max_background_flushes'],
-                  19:['max_write_buffer_number', 'write_buffer_size', 'max_background_flushes', 'max_background_compactions', 'compression_ratio'],
-                  20:['max_write_buffer_number', 'write_buffer_size', 'compression_ratio', 'max_background_flushes', 'max_background_compactions'],
-                  21:['max_write_buffer_number', 'write_buffer_size', 'max_background_compactions', 'max_background_flushes', 'compression_ratio']
-                  }
-TOP_10K_COLUMNS = {16:['max_bytes_for_level_base', 'bloom_locality', 'target_file_size_base', 'num_levels', 'max_write_buffer_number',
-                       'memtable_bloom_size_ratio', 'target_file_size_multiplier', 'max_background_flushes', 'compression_ratio', 'max_background_compactions'],
-                   17:['compression_type', 'target_file_size_base', 'level0_file_num_compaction_trigger', 'compaction_pri', 'min_write_buffer_number_to_merge',
-                       'max_write_buffer_number', 'write_buffer_size', 'max_background_compactions', 'max_background_flushes', 'compression_ratio'],
-                   18:['compression_type', 'level0_slowdown_writes_trigger', 'level0_file_num_compaction_trigger', 'max_write_buffer_number', 'compaction_pri',
-                       'min_write_buffer_number_to_merge', 'write_buffer_size', 'max_background_compactions', 'compression_ratio', 'max_background_flushes'],
-                   19:['memtable_bloom_size_ratio', 'target_file_size_base', 'min_write_buffer_number_to_merge', 'num_levels', 'target_file_size_multiplier',
-                       'max_write_buffer_number', 'write_buffer_size', 'max_background_flushes', 'max_background_compactions', 'compression_ratio'],
-                   20:['bloom_locality', 'level0_file_num_compaction_trigger', 'open_files', 'compaction_pri', 'min_write_buffer_number_to_merge',
-                       'max_write_buffer_number', 'write_buffer_size', 'compression_ratio', 'max_background_flushes', 'max_background_compactions'],
-                   21:['block_size', 'compaction_pri', 'open_files', 'min_write_buffer_number_to_merge', 'bloom_locality',
-                       'max_write_buffer_number', 'write_buffer_size', 'max_background_compactions', 'max_background_flushes', 'compression_ratio']
-                  }
-
-
 def main():
     logger.info("## get raw datas ##")
     raw_knobs = rocksdb_knobs_make_dict(KNOB_PATH)
@@ -114,12 +92,6 @@ def main():
 
 
     knobs = Knob(raw_knobs, internal_dict, external_dict, opt, opt.target, opt.sample_size)
-
-    # import pickle
-    
-    # with open("test_knob_class.pickle", "wb") as f:
-    #     pickle.dump(knobs, f)
-    # assert False
 
     logger.info("## Workload Mapping ##")
     if opt.similar_wk is not None:
