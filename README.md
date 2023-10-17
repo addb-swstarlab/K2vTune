@@ -31,6 +31,10 @@ optimization : choose optimization algorithm ['ga', 'smac']
 </pre>
 * #### Training the model
 ```
+./main.sh train # Please modify arguments in the bash file
+```
+or
+```
 python main.py --target ${target_idx} --tf --train --hidden_size ${hidden_size} --lr ${learning_rate} \
 --generation ${generation_num} --pool ${pool_num}
 ```
