@@ -1,5 +1,5 @@
-# TMP Repository
-
+# K2vTune: A Workload-aware Configuration Tuning for RocksDB
+This repository contains the source code for the paper "K2vTune: A Workload-aware Configuration Tuning for RocksDB" published on [Information Processing & Management](https://www.sciencedirect.com/journal/information-processing-and-management). K2vTune is a workload-aware configuration tuning framework, which can recognize the configuration knobs of RocksDB according to the workload type  and effectively consider multiple performance metrics using our knob2vec method.
 ## Requirements
 - lifelines
 - pytorch == 1.7.0
