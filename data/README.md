@@ -1,5 +1,5 @@
 # Data Information
-save train data files according file types
+This data folder saves the training data files according to saved data types. The dataset of RocksDB is collected using this repository: <https://github.com/addb-swstarlab/RocksDB-data-generation>.
 ## Folder List
 * ### external
   * save external results to .csv
